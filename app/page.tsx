@@ -1,100 +1,155 @@
-import Image from "next/image";
+"use client"
+
+import React from 'react';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const features = [
+    { name: "3D Gameplay", description: "Shoot floating letters in a 3D space to spell words" },
+    { name: "Multiple Difficulty Levels", description: "Easy, Medium, and Hard modes for all skill levels" },
+    { name: "Custom Environments", description: "Thematic backgrounds matching word categories" },
+    { name: "Cross-Platform Support", description: "Optimized for both desktop and mobile devices" },
+    { name: "Educational Value", description: "Improve spelling and vocabulary while having fun" },
+  ];
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  const phases = [
+    { 
+      name: "Phase 1: Core Functionality", 
+      progress: 20, 
+      tasks: [
+        { name: "Initialize Next.js project", completed: true },
+        { name: "Set up Tailwind CSS", completed: true },
+        { name: "Set up shadcn/ui component library", completed: true },
+        { name: "Create project folder structure", completed: true },
+        { name: "Add Three.js integration", completed: false },
+        { name: "Create basic state management", completed: false },
+        { name: "Implement game mechanics", completed: false },
+      ]
+    },
+    { 
+      name: "Phase 2: Enhanced Experience", 
+      progress: 0,
+      tasks: [
+        { name: "Settings page", completed: false },
+        { name: "Visual enhancements", completed: false },
+        { name: "Audio integration", completed: false },
+        { name: "Word selection API", completed: false },
+      ]
+    },
+    { 
+      name: "Phase 3: Polish & Optimization", 
+      progress: 0,
+      tasks: [
+        { name: "Mobile optimization", completed: false },
+        { name: "Performance improvements", completed: false },
+        { name: "UX enhancements", completed: false },
+        { name: "Additional content", completed: false },
+      ]
+    },
+    { 
+      name: "Phase 4: Backend Integration", 
+      progress: 0,
+      tasks: [
+        { name: "Convex setup", completed: false },
+        { name: "User accounts", completed: false },
+        { name: "Progress tracking", completed: false },
+        { name: "Social features", completed: false },
+      ]
+    }
+  ];
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-blue-950">
+      {/* Hero Section */}
+      <div className="flex flex-col items-center justify-center py-24 px-4 text-center">
+        <h1 className="text-6xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-6">
+          LetterBlast 🎮
+        </h1>
+        <p className="text-xl max-w-2xl mb-8 text-gray-700 dark:text-gray-300">
+          An interactive 3D shooting game where players practice English by shooting letters to form words.
+        </p>
+        <div className="flex gap-4">
+          <Button disabled className="bg-blue-600 hover:bg-blue-700">
+            Play Game (Coming Soon)
+          </Button>
+          <Button variant="outline" onClick={() => window.open('https://github.com/Bendako/LetterBlast', '_blank')}>
+            GitHub Repo
+          </Button>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
+      </div>
+
+      {/* Development Progress Section - Moved higher */}
+      <div className="max-w-4xl mx-auto px-4 py-16">
+        <h2 className="text-3xl font-bold text-center mb-12 text-gray-800 dark:text-gray-100">
+          Development Progress
+        </h2>
+        
+        <div className="space-y-10">
+          {phases.map((phase, phaseIndex) => (
+            <div key={phaseIndex} className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+              <h3 className="text-xl font-semibold mb-2 text-gray-800 dark:text-gray-100">{phase.name}</h3>
+              <div className="mb-4">
+                <Progress value={phase.progress} className="h-2" />
+                <p className="text-right text-sm text-gray-500 dark:text-gray-400 mt-1">{phase.progress}% Complete</p>
+              </div>
+              <div className="space-y-2 mt-4">
+                {phase.tasks.map((task, taskIndex) => (
+                  <div key={taskIndex} className="flex items-center">
+                    <div className={`w-4 h-4 rounded-full mr-3 flex-shrink-0 ${task.completed ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`}></div>
+                    <span className={`${task.completed ? 'text-gray-800 dark:text-gray-200' : 'text-gray-500 dark:text-gray-400'}`}>
+                      {task.name}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Tech Stack Section */}
+      <div className="max-w-4xl mx-auto px-4 py-16">
+        <h2 className="text-3xl font-bold text-center mb-12 text-gray-800 dark:text-gray-100">
+          Tech Stack
+        </h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 text-center">
+          {[
+            { name: "Next.js", color: "bg-black text-white" },
+            { name: "React", color: "bg-blue-500 text-white" },
+            { name: "TypeScript", color: "bg-blue-600 text-white" },
+            { name: "Three.js", color: "bg-black text-white" },
+            { name: "Tailwind CSS", color: "bg-sky-500 text-white" },
+            { name: "shadcn/ui", color: "bg-gray-800 text-white" },
+            { name: "Convex", color: "bg-purple-600 text-white" },
+            { name: "Radix UI", color: "bg-gray-700 text-white" }
+          ].map((tech, index) => (
+            <div 
+              key={index} 
+              className={`${tech.color} p-4 rounded-lg shadow-sm flex items-center justify-center font-medium`}
+            >
+              {tech.name}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Call to Action */}
+      <div className="bg-blue-600 dark:bg-blue-800 text-white py-16 px-4 text-center">
+        <h2 className="text-3xl font-bold mb-4">Want to help build LetterBlast?</h2>
+        <p className="max-w-2xl mx-auto mb-8">
+          We&apos;re looking for contributors to help bring this educational game to life!
+        </p>
+        <Button variant="outline" className="bg-transparent border-white text-white hover:bg-white hover:text-blue-600">
+          Join the Team
+        </Button>
+      </div>
+
+      {/* Footer */}
+      <footer className="bg-gray-100 dark:bg-gray-900 py-8 px-4 text-center">
+        <p className="text-gray-600 dark:text-gray-400">
+          © {new Date().getFullYear()} LetterBlast Game • All Rights Reserved
+        </p>
       </footer>
     </div>
   );
