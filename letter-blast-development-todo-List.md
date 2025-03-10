@@ -5,21 +5,22 @@ This document outlines the development roadmap for the LetterBlast game, organiz
 ## Phase 1: Core Functionality ⚙️
 
 ### Project Setup
-- [ ] Initialize Next.js project with TypeScript configuration
-- [ ] Set up Tailwind CSS and shadcn/ui component library
-- [ ] Create project folder structure according to specification
+- [x] Initialize Next.js project with TypeScript configuration
+- [x] Set up Tailwind CSS
+- [ ] Set up shadcn/ui component library
+- [x] Create project folder structure according to specification
 - [ ] Add Three.js integration and configure basic 3D scene
 - [ ] Create basic state management for game data
 - [ ] Set up testing framework
 
 ### Type Definitions
-- [ ] Define core game state interfaces
+- [x] Define core game state interfaces
 - [ ] Create type definitions for word management
 - [ ] Define player progress and score types
 - [ ] Add types for difficulty settings and game configuration
 
 ### Start Page
-- [ ] Implement basic layout for start page
+- [x] Implement basic layout for start page
 - [ ] Create game logo and title component
 - [ ] Build navigation buttons (Play, Settings, Instructions)
 - [ ] Add animated 3D letter background for start page
