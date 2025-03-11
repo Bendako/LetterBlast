@@ -2,62 +2,67 @@
 
 This document outlines the development roadmap for the LetterBlast game, organized into phases with specific tasks. Use this as a guide to track progress and manage development priorities.
 
-## Phase 1: Core Functionality
+
+תיקונים לעשות:
+1. למרכז אותיות המטרה
+2. הרמת קושי עולה כאשר המילים חוזרות על עצמן
+
+## Phase 1: Core Functionality (70% Complete)
 
 ### Project Setup
 - [x] Initialize Next.js project with TypeScript configuration
 - [x] Set up Tailwind CSS
 - [x] Set up shadcn/ui component library
 - [x] Create project folder structure according to specification
-- [ ] Add Three.js integration and configure basic 3D scene
-- [ ] Create basic state management for game data
+- [x] Add Three.js integration and configure basic 3D scene
+- [x] Create basic state management for game data
 - [ ] Set up testing framework
 
 ### Type Definitions
-- [ ] Define core game state interfaces
-- [ ] Create type definitions for word management
-- [ ] Define player progress and score types
-- [ ] Add types for difficulty settings and game configuration
+- [x] Define core game state interfaces
+- [x] Create type definitions for word management
+- [x] Define player progress and score types
+- [x] Add types for difficulty settings and game configuration
 
 ### Start Page
-- [ ] Implement basic layout for start page
-- [ ] Create game logo and title component
-- [ ] Build navigation buttons (Play, Settings, Instructions)
+- [x] Implement basic layout for start page
+- [x] Create game logo and title component
+- [x] Build navigation buttons (Play, Settings, Instructions)
 - [ ] Add animated 3D letter background for start page
-- [ ] Implement responsive design for different screen sizes
+- [x] Implement responsive design for different screen sizes
 
 ### Game Page
-- [ ] Create basic game page layout
-- [ ] Implement 3D rendering canvas
-- [ ] Add letter generation and animation system
-- [ ] Build player aiming and shooting mechanics
-- [ ] Create word display component
-- [ ] Implement timer countdown functionality
-- [ ] Add score tracking system
-- [ ] Create lives/attempts display
-- [ ] Build pause functionality
-- [ ] Implement exit game button and confirmation dialog
+- [x] Create basic game page layout
+- [x] Implement 3D rendering canvas
+- [x] Add letter generation and animation system
+- [x] Build player aiming and shooting mechanics
+- [x] Create word display component
+- [x] Implement timer countdown functionality
+- [x] Add score tracking system
+- [x] Create lives/attempts display
+- [x] Build pause functionality
+- [x] Implement exit game button and confirmation dialog
 
 ### Game Over Page
-- [ ] Design basic game over page layout
-- [ ] Implement final score display
-- [ ] Add play again functionality
-- [ ] Create return to main menu option
+- [x] Design basic game over page layout
+- [x] Implement final score display
+- [x] Add play again functionality
+- [x] Create return to main menu option
 - [ ] Build basic statistics display (words completed, accuracy)
 
 ### Core Game Mechanics
-- [ ] Implement letter spawning system
-- [ ] Create letter collision detection
-- [ ] Build word completion logic
-- [ ] Implement correct/incorrect letter feedback
+- [x] Implement letter spawning system
+- [x] Create letter collision detection
+- [x] Build word completion logic
+- [x] Implement correct/incorrect letter feedback
 - [ ] Add basic sound effect placeholders
-- [ ] Create simple word list for initial testing
+- [x] Create simple word list for initial testing
 
-## Phase 2: Enhanced Experience
+## Phase 2: Enhanced Experience (10% Complete)
 
 ### Settings Page
 - [ ] Create settings page layout
-- [ ] Implement difficulty level selection
+- [x] Implement difficulty level selection
 - [ ] Add time limit adjustment controls
 - [ ] Build sound toggle functionality
 - [ ] Create volume control sliders
@@ -66,9 +71,9 @@ This document outlines the development roadmap for the LetterBlast game, organiz
 ### Visual Enhancements
 - [ ] Add particle effects for letter hits
 - [ ] Implement custom shaders for letter rendering
-- [ ] Create thematic environment backgrounds
+- [x] Create thematic environment backgrounds
 - [ ] Add animated transitions between pages
-- [ ] Improve UI with consistent styling
+- [x] Improve UI with consistent styling
 - [ ] Enhance button and interactive element visuals
 
 ### Audio Integration
@@ -87,7 +92,7 @@ This document outlines the development roadmap for the LetterBlast game, organiz
 - [ ] Implement word category selection
 - [ ] Build fallback for offline word lists
 
-## Phase 3: Polish & Optimization
+## Phase 3: Polish & Optimization (0% Complete)
 
 ### Mobile Optimization
 - [ ] Implement touch controls for mobile
@@ -120,7 +125,7 @@ This document outlines the development roadmap for the LetterBlast game, organiz
 - [ ] Add achievements and challenges system
 - [ ] Implement different game modes
 
-## Phase 4: Backend Integration
+## Phase 4: Backend Integration (0% Complete)
 
 ### Convex Setup
 - [ ] Initialize Convex backend
@@ -156,18 +161,31 @@ This document outlines the development roadmap for the LetterBlast game, organiz
 
 ## Development Priorities
 
-1. **MVP Features** (Phase 1) - Focus on core gameplay functionality
-2. **User Experience** (Phase 2) - Enhance game feel and visual appeal
-3. **Optimization** (Phase 3) - Ensure smooth performance across devices
-4. **Advanced Features** (Phase 4) - Add backend and social features
+1. **Complete Phase 1 (Core Gameplay)** - Finish remaining core tasks:
+   - Add basic sound effects
+   - Improve letter hit feedback
+   - Complete statistics display for game over screen
 
-## Next Steps
+2. **Begin Audio Implementation** - Add sound effects for:
+   - Letter hits (correct/incorrect)
+   - Word completion
+   - Game over/success
+   - Background ambient music
 
-To continue development, focus on completing the remaining Phase 1 tasks:
-1. Add Three.js integration and set up the 3D scene
-2. Implement core game mechanics for letter generation and interaction
-3. Build out the game page with required UI components
-4. Create the game over page flow
-5. Develop core word completion logic
+3. **Enhance Visual Experience** - Focus on:
+   - Particle effects for letter hits
+   - Improved animations
+   - Enhanced UI feedback
 
-After completing Phase 1, begin working on the enhanced experience features in Phase 2 according to priority.
+4. **Mobile Support** - Make the game playable on mobile devices:
+   - Touch controls
+   - Mobile-friendly UI
+   - Performance optimizations
+
+## Next Tasks
+
+1. Implement basic sound effect system
+2. Add particle effects for letter hits
+3. Create better visual feedback for correct/incorrect letter selection
+4. Begin work on settings page for audio/visual controls
+5. Create mobile touch controls
