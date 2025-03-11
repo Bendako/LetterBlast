@@ -39,21 +39,26 @@ const getRandomColor = (): string => {
   return colors[Math.floor(Math.random() * colors.length)];
 };
 
-// Generate a random position within the game space
-const getRandomPosition = (spread: number = 5): [number, number, number] => {
+// Generate a position for a letter - now positioned in front of the player
+const getRandomPosition = (spread: number = 8): [number, number, number] => {
+  // Place letters in front of the player (negative z) at a fixed distance range
+  const targetDistance = -15 - (Math.random() * 5); // Between -15 and -20 units away
+  
   return [
-    (Math.random() - 0.5) * spread * 2, // x
-    (Math.random() - 0.5) * spread * 2, // y
-    (Math.random() - 0.5) * spread * 2, // z
+    (Math.random() - 0.5) * spread * 2,     // x: wide horizontal spread
+    (Math.random() - 0.5) * 4,              // y: limited vertical spread
+    targetDistance                           // z: fixed distance in front
   ];
 };
 
-// Generate a random velocity vector
+// Generate velocity that primarily moves horizontally
 const getRandomVelocity = (speed: number = 0.01): [number, number, number] => {
+  const direction = Math.random() > 0.5 ? 1 : -1; // Random left or right
+  
   return [
-    (Math.random() - 0.5) * speed,
-    (Math.random() - 0.5) * speed,
-    (Math.random() - 0.5) * speed,
+    direction * (0.5 + Math.random() * 0.5) * speed * 3, // x: stronger horizontal movement
+    0,                                                   // y: no vertical movement
+    0                                                    // z: no depth movement
   ];
 };
 
@@ -156,20 +161,20 @@ export const updateGameState = (state: GameState, deltaTime: number): GameState 
       z + vz * deltaTime * 60,
     ];
     
-    // Bounce if hitting the boundaries
-    const boundary = 6;
+    // Bounce if hitting the horizontal boundaries
+    const horizontalBoundary = 10;
     const newVelocity = [...letter.velocity] as [number, number, number];
     
-    if (Math.abs(newPosition[0]) > boundary) newVelocity[0] *= -1;
-    if (Math.abs(newPosition[1]) > boundary) newVelocity[1] *= -1;
-    if (Math.abs(newPosition[2]) > boundary) newVelocity[2] *= -1;
+    if (Math.abs(newPosition[0]) > horizontalBoundary) {
+      newVelocity[0] *= -1; // Reverse direction when hitting side boundaries
+    }
     
     return {
       ...letter,
       position: [
-        Math.max(-boundary, Math.min(boundary, newPosition[0])),
-        Math.max(-boundary, Math.min(boundary, newPosition[1])),
-        Math.max(-boundary, Math.min(boundary, newPosition[2])),
+        Math.max(-horizontalBoundary, Math.min(horizontalBoundary, newPosition[0])),
+        newPosition[1],
+        newPosition[2]
       ] as [number, number, number],
       velocity: newVelocity,
     };

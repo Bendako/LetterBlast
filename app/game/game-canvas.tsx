@@ -16,11 +16,10 @@ const Letter = ({ letter, onShoot }: LetterProps) => {
   const mesh = useRef<THREE.Mesh>(null!);
   const { id, character, position, color, active } = letter;
 
-  // Simple animation - rotate the letter
+  // Simple animation - rotate the letter to make it more visible
   useFrame(() => {
     if (mesh.current) {
-      mesh.current.rotation.x += 0.01;
-      mesh.current.rotation.y += 0.01;
+      mesh.current.rotation.y += 0.01; // Only rotate on Y axis for better readability
     }
   });
 
@@ -37,18 +36,19 @@ const Letter = ({ letter, onShoot }: LetterProps) => {
       scale={active ? 1.5 : 1}
       onClick={handleClick}
     >
-      <boxGeometry args={[1, 1, 1]} />
+      <boxGeometry args={[1, 1, 0.5]} /> {/* Make blocks thinner for a more target-like look */}
       <meshStandardMaterial 
         color={color} 
         transparent={active}
         opacity={active ? 0.5 : 1}
       />
       <Text
-        position={[0, 0, 0.51]} // Position the text slightly in front of the cube
-        fontSize={0.5}
-        color={active ? "gray" : "black"}
+        position={[0, 0, 0.26]} // Position the text slightly in front of the cube
+        fontSize={0.6}
+        color={active ? "gray" : "white"}
         anchorX="center"
         anchorY="middle"
+        fontWeight="bold"
       >
         {character}
       </Text>
@@ -60,17 +60,17 @@ const Letter = ({ letter, onShoot }: LetterProps) => {
 const ShootingRangeEnvironment = () => {
   return (
     <>
-      <ambientLight intensity={0.7} />
-      <spotLight position={[0, 10, 0]} intensity={1.2} castShadow />
-      <directionalLight position={[-10, 10, 5]} intensity={0.8} />
+      <ambientLight intensity={0.5} />
+      <spotLight position={[0, 5, 5]} intensity={1} castShadow />
+      <directionalLight position={[-10, 10, 5]} intensity={0.5} />
       
       {/* Floor with shooting range markings */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -3, 0]} receiveShadow>
         <planeGeometry args={[40, 60]} />
-        <meshStandardMaterial color="#555555" />
+        <meshStandardMaterial color="#444444" />
         {/* Range markers */}
         {[5, 10, 15, 20, 25].map((dist) => (
-          <mesh key={dist} position={[0, dist - 20, 0.01]} rotation={[0, 0, 0]}>
+          <mesh key={dist} position={[0, -dist, 0.01]} rotation={[0, 0, 0]}>
             <planeGeometry args={[20, 0.2]} />
             <meshStandardMaterial color="#ffffff" />
           </mesh>
@@ -80,7 +80,7 @@ const ShootingRangeEnvironment = () => {
       {/* Back wall with target patterns */}
       <mesh position={[0, 2, -25]} receiveShadow>
         <boxGeometry args={[40, 10, 0.5]} />
-        <meshStandardMaterial color="#777777" />
+        <meshStandardMaterial color="#555555" />
         {/* Target circles */}
         <mesh position={[0, 0, 0.3]}>
           <ringGeometry args={[2, 2.2, 32]} />
@@ -103,18 +103,18 @@ const ShootingRangeEnvironment = () => {
       {/* Side walls */}
       <mesh position={[20, 2, -10]} rotation={[0, -Math.PI / 2, 0]} receiveShadow>
         <boxGeometry args={[30, 10, 0.5]} />
-        <meshStandardMaterial color="#666666" />
+        <meshStandardMaterial color="#555555" />
       </mesh>
       
       <mesh position={[-20, 2, -10]} rotation={[0, Math.PI / 2, 0]} receiveShadow>
         <boxGeometry args={[30, 10, 0.5]} />
-        <meshStandardMaterial color="#666666" />
+        <meshStandardMaterial color="#555555" />
       </mesh>
       
       {/* Ceiling with lights */}
       <mesh position={[0, 7, -10]} rotation={[Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[40, 30]} />
-        <meshStandardMaterial color="#444444" />
+        <meshStandardMaterial color="#333333" />
       </mesh>
       
       {/* Light fixtures */}
@@ -138,7 +138,7 @@ interface GameCanvasProps {
 export default function GameCanvas({ letters, onShootLetter }: GameCanvasProps) {
   return (
     <div className="fixed inset-0 w-full h-full z-0">
-      <Canvas shadows camera={{ position: [0, 0, 8], fov: 60 }}>
+      <Canvas shadows camera={{ position: [0, 0, 10], fov: 60 }}>
         <ShootingRangeEnvironment />
         
         {/* Render only the non-active letters (make them disappear when hit) */}
@@ -150,8 +150,14 @@ export default function GameCanvas({ letters, onShootLetter }: GameCanvasProps) 
           />
         ))}
         
-        {/* Add orbit controls so the user can rotate the view */}
-        <OrbitControls enableZoom={true} maxPolarAngle={Math.PI / 1.5} />
+        {/* Add orbit controls with limited movement */}
+        <OrbitControls 
+          enableZoom={true}
+          maxPolarAngle={Math.PI / 1.8} 
+          minPolarAngle={Math.PI / 2.2}
+          enablePan={false}
+          target={[0, 0, -15]} // Look at the center of where letters are
+        />
       </Canvas>
     </div>
   );
