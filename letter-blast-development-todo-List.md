@@ -5,7 +5,7 @@ This document outlines the development roadmap for the LetterBlast game, organiz
 
 תיקונים לעשות:
 1. למרכז אותיות המטרה
-2. הרמת קושי עולה כאשר המילים חוזרות על עצמן
+2. רמת הקושי עולה כאשר המילים חוזרות על עצמן
 
 ## Phase 1: Core Functionality (70% Complete)
 
