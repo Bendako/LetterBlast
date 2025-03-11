@@ -39,15 +39,15 @@ const getRandomColor = (): string => {
   return colors[Math.floor(Math.random() * colors.length)];
 };
 
-// Generate a position for a letter - now positioned in front of the player
+// Generate a position for a letter - constrained to a 2D plane in front of the player
 const getRandomPosition = (spread: number = 8): [number, number, number] => {
-  // Place letters in front of the player (negative z) at a fixed distance range
-  const targetDistance = -15 - (Math.random() * 5); // Between -15 and -20 units away
+  // Fixed z coordinate to place all letters on the same plane
+  const fixedDistance = -15; // Fixed distance in front of player
   
   return [
     (Math.random() - 0.5) * spread * 2,     // x: wide horizontal spread
     (Math.random() - 0.5) * 4,              // y: limited vertical spread
-    targetDistance                           // z: fixed distance in front
+    fixedDistance                           // z: fixed distance for all letters
   ];
 };
 

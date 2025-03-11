@@ -16,10 +16,11 @@ const Letter = ({ letter, onShoot }: LetterProps) => {
   const mesh = useRef<THREE.Mesh>(null!);
   const { id, character, position, color, active } = letter;
 
-  // Simple animation - rotate the letter to make it more visible
-  useFrame(() => {
+  // Instead of rotating, make the letter always face the camera
+  useFrame(({ camera }) => {
     if (mesh.current) {
-      mesh.current.rotation.y += 0.01; // Only rotate on Y axis for better readability
+      // This makes the mesh always face the camera
+      mesh.current.lookAt(camera.position);
     }
   });
 
@@ -36,14 +37,15 @@ const Letter = ({ letter, onShoot }: LetterProps) => {
       scale={active ? 1.5 : 1}
       onClick={handleClick}
     >
-      <boxGeometry args={[1, 1, 0.5]} /> {/* Make blocks thinner for a more target-like look */}
+      {/* Use a plane geometry instead of a box for a 2D appearance */}
+      <planeGeometry args={[1, 1]} /> 
       <meshStandardMaterial 
         color={color} 
         transparent={active}
         opacity={active ? 0.5 : 1}
       />
       <Text
-        position={[0, 0, 0.26]} // Position the text slightly in front of the cube
+        position={[0, 0, 0.01]} // Position the text just slightly in front of the plane
         fontSize={0.6}
         color={active ? "gray" : "white"}
         anchorX="center"
@@ -150,13 +152,15 @@ export default function GameCanvas({ letters, onShootLetter }: GameCanvasProps) 
           />
         ))}
         
-        {/* Add orbit controls with limited movement */}
+        {/* Add orbit controls with very limited movement to maintain front view */}
         <OrbitControls 
           enableZoom={true}
-          maxPolarAngle={Math.PI / 1.8} 
-          minPolarAngle={Math.PI / 2.2}
-          enablePan={false}
-          target={[0, 0, -15]} // Look at the center of where letters are
+          enableRotate={false}    // Disable rotation completely to keep front view
+          enablePan={true}        // Allow panning to move around the 2D plane
+          panSpeed={0.5}          // Reduce pan speed for better control
+          target={[0, 0, -15]}    // Look at the center of where letters are
+          maxDistance={20}        // Limit how far you can zoom out
+          minDistance={5}         // Limit how close you can zoom in
         />
       </Canvas>
     </div>
