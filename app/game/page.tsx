@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import GameCanvas from '@/components/game/game-canvas';
+import GameCanvas from '@/app/game/game-canvas';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useGameState } from '@/hooks/use-game-state';
