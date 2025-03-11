@@ -1,9 +1,8 @@
 "use client";
 
-import React, { useRef } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Text } from '@react-three/drei';
-import * as THREE from 'three';
+import React from 'react';
+import { Canvas } from '@react-three/fiber';
+import { OrbitControls, Text, Billboard } from '@react-three/drei';
 import { Letter as LetterType } from '@/lib/game-engine';
 
 // A component for a floating letter in 3D space
@@ -13,16 +12,7 @@ interface LetterProps {
 }
 
 const Letter = ({ letter, onShoot }: LetterProps) => {
-  const mesh = useRef<THREE.Mesh>(null!);
   const { id, character, position, color, active } = letter;
-
-  // Instead of rotating, make the letter always face the camera
-  useFrame(({ camera }) => {
-    if (mesh.current) {
-      // This makes the mesh always face the camera
-      mesh.current.lookAt(camera.position);
-    }
-  });
 
   const handleClick = () => {
     if (!active) {
@@ -31,30 +21,35 @@ const Letter = ({ letter, onShoot }: LetterProps) => {
   };
 
   return (
-    <mesh
+    <Billboard
       position={position}
-      ref={mesh}
-      scale={active ? 1.5 : 1}
-      onClick={handleClick}
+      follow={true}
+      lockX={false}
+      lockY={false}
+      lockZ={false}
     >
-      {/* Use a plane geometry instead of a box for a 2D appearance */}
-      <planeGeometry args={[1, 1]} /> 
-      <meshStandardMaterial 
-        color={color} 
-        transparent={active}
-        opacity={active ? 0.5 : 1}
-      />
-      <Text
-        position={[0, 0, 0.01]} // Position the text just slightly in front of the plane
-        fontSize={0.6}
-        color={active ? "gray" : "white"}
-        anchorX="center"
-        anchorY="middle"
-        fontWeight="bold"
+      <mesh
+        scale={active ? 1.5 : 1}
+        onClick={handleClick}
       >
-        {character}
-      </Text>
-    </mesh>
+        <planeGeometry args={[1, 1]} /> 
+        <meshStandardMaterial 
+          color={color} 
+          transparent={active}
+          opacity={active ? 0.5 : 1}
+        />
+        <Text
+          position={[0, 0, 0.01]}
+          fontSize={0.6}
+          color={active ? "gray" : "white"}
+          anchorX="center"
+          anchorY="middle"
+          fontWeight="bold"
+        >
+          {character}
+        </Text>
+      </mesh>
+    </Billboard>
   );
 };
 
