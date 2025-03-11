@@ -22,8 +22,8 @@ export default function Home() {
         { name: "Set up Tailwind CSS", completed: true },
         { name: "Set up shadcn/ui component library", completed: true },
         { name: "Create project folder structure", completed: true },
-        { name: "Add Three.js integration", completed: false },
-        { name: "Create basic state management", completed: false },
+        { name: "Add Three.js integration", completed: true },
+        { name: "Create basic state management", completed: true },
         { name: "Implement game mechanics", completed: false },
       ]
     },
@@ -70,8 +70,8 @@ export default function Home() {
           An interactive 3D shooting game where players practice English by shooting letters to form words.
         </p>
         <div className="flex gap-4">
-          <Button disabled className="bg-blue-600 hover:bg-blue-700">
-            Play Game (Coming Soon)
+          <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => window.location.href = '/game'}>
+            Play Game
           </Button>
           <Button variant="outline" onClick={() => window.open('https://github.com/Bendako/LetterBlast', '_blank')}>
             GitHub Repo
