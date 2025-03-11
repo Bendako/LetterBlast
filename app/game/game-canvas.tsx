@@ -56,25 +56,74 @@ const Letter = ({ letter, onShoot }: LetterProps) => {
   );
 };
 
-// A simple background environment
-const Environment = () => {
+// A shooting range environment
+const ShootingRangeEnvironment = () => {
   return (
     <>
-      <ambientLight intensity={0.5} />
-      <pointLight position={[10, 10, 10]} />
-      <directionalLight position={[-10, 10, 5]} intensity={1} />
+      <ambientLight intensity={0.7} />
+      <spotLight position={[0, 10, 0]} intensity={1.2} castShadow />
+      <directionalLight position={[-10, 10, 5]} intensity={0.8} />
       
-      {/* Create a basic "floor" */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -3, 0]}>
-        <planeGeometry args={[100, 100]} />
-        <meshStandardMaterial color="#3f7fbf" />
+      {/* Floor with shooting range markings */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -3, 0]} receiveShadow>
+        <planeGeometry args={[40, 60]} />
+        <meshStandardMaterial color="#555555" />
+        {/* Range markers */}
+        {[5, 10, 15, 20, 25].map((dist) => (
+          <mesh key={dist} position={[0, dist - 20, 0.01]} rotation={[0, 0, 0]}>
+            <planeGeometry args={[20, 0.2]} />
+            <meshStandardMaterial color="#ffffff" />
+          </mesh>
+        ))}
       </mesh>
       
-      {/* Create a simple skybox */}
-      <mesh rotation={[0, 0, 0]} position={[0, 0, -15]}>
-        <planeGeometry args={[100, 50]} />
-        <meshStandardMaterial color="#87CEEB" />
+      {/* Back wall with target patterns */}
+      <mesh position={[0, 2, -25]} receiveShadow>
+        <boxGeometry args={[40, 10, 0.5]} />
+        <meshStandardMaterial color="#777777" />
+        {/* Target circles */}
+        <mesh position={[0, 0, 0.3]}>
+          <ringGeometry args={[2, 2.2, 32]} />
+          <meshStandardMaterial color="red" />
+        </mesh>
+        <mesh position={[0, 0, 0.3]}>
+          <ringGeometry args={[1, 1.2, 32]} />
+          <meshStandardMaterial color="red" />
+        </mesh>
+        <mesh position={[-10, 0, 0.3]}>
+          <ringGeometry args={[2, 2.2, 32]} />
+          <meshStandardMaterial color="red" />
+        </mesh>
+        <mesh position={[10, 0, 0.3]}>
+          <ringGeometry args={[2, 2.2, 32]} />
+          <meshStandardMaterial color="red" />
+        </mesh>
       </mesh>
+      
+      {/* Side walls */}
+      <mesh position={[20, 2, -10]} rotation={[0, -Math.PI / 2, 0]} receiveShadow>
+        <boxGeometry args={[30, 10, 0.5]} />
+        <meshStandardMaterial color="#666666" />
+      </mesh>
+      
+      <mesh position={[-20, 2, -10]} rotation={[0, Math.PI / 2, 0]} receiveShadow>
+        <boxGeometry args={[30, 10, 0.5]} />
+        <meshStandardMaterial color="#666666" />
+      </mesh>
+      
+      {/* Ceiling with lights */}
+      <mesh position={[0, 7, -10]} rotation={[Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[40, 30]} />
+        <meshStandardMaterial color="#444444" />
+      </mesh>
+      
+      {/* Light fixtures */}
+      {[-10, 0, 10].map((x) => (
+        <mesh key={`light-${x}`} position={[x, 6.9, -10]} rotation={[Math.PI / 2, 0, 0]}>
+          <boxGeometry args={[2, 2, 0.2]} />
+          <meshStandardMaterial color="#ffffff" emissive="#ffff99" emissiveIntensity={0.5} />
+        </mesh>
+      ))}
     </>
   );
 };
@@ -88,12 +137,12 @@ interface GameCanvasProps {
 // Game canvas component that contains the 3D scene
 export default function GameCanvas({ letters, onShootLetter }: GameCanvasProps) {
   return (
-    <div className="w-full h-[500px] rounded-lg overflow-hidden shadow-lg">
-      <Canvas camera={{ position: [0, 0, 8], fov: 50 }}>
-        <Environment />
+    <div className="fixed inset-0 w-full h-full z-0">
+      <Canvas shadows camera={{ position: [0, 0, 8], fov: 60 }}>
+        <ShootingRangeEnvironment />
         
-        {/* Render the letters */}
-        {letters.map((letter) => (
+        {/* Render only the non-active letters (make them disappear when hit) */}
+        {letters.filter(letter => !letter.active).map((letter) => (
           <Letter
             key={letter.id}
             letter={letter}
@@ -102,7 +151,7 @@ export default function GameCanvas({ letters, onShootLetter }: GameCanvasProps) 
         ))}
         
         {/* Add orbit controls so the user can rotate the view */}
-        <OrbitControls enableZoom={true} />
+        <OrbitControls enableZoom={true} maxPolarAngle={Math.PI / 1.5} />
       </Canvas>
     </div>
   );

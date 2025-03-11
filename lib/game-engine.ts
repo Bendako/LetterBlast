@@ -228,22 +228,8 @@ export const handleLetterShot = (state: GameState, letterId: string): GameState 
       letters: updatedLetters,
     };
   } else {
-    // Wrong letter
-    const newLives = state.lives - 1;
-    
-    // Check if game over due to no lives left
-    if (newLives <= 0) {
-      return {
-        ...state,
-        lives: 0,
-        isGameOver: true,
-      };
-    }
-    
-    return {
-      ...state,
-      lives: newLives,
-    };
+    // Wrong letter - no penalty
+    return state; // Just return the current state without modification
   }
 };
 

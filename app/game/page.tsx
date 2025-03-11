@@ -37,57 +37,93 @@ export default function GamePage() {
   }
   
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">LetterBlast Game</h1>
-        <div className="flex gap-2">
-          <Button 
-            variant={isPaused ? "default" : "outline"}
-            onClick={togglePause}
-          >
-            {isPaused ? "Resume" : "Pause"}
-          </Button>
-          <Link href="/">
-            <Button variant="outline">Exit Game</Button>
-          </Link>
-        </div>
-      </div>
+    <div className="h-screen w-full overflow-hidden relative">
+      {/* Main Game Canvas (Full Screen) */}
+      <GameCanvas 
+        letters={gameState.letters} 
+        onShootLetter={shootLetter} 
+      />
       
-      {/* Game Information Bar */}
-      <div className="grid grid-cols-4 gap-6 mb-6">
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-md">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Score</div>
-          <div className="text-2xl font-bold">{gameState.score}</div>
+      {/* Game HUD Overlay */}
+      <div className="absolute inset-0 pointer-events-none">
+        {/* Top HUD Bar */}
+        <div className="pointer-events-auto bg-black/30 backdrop-blur-sm p-4 flex justify-between items-center">
+          <h1 className="text-2xl font-bold text-white">LetterBlast</h1>
+          
+          <div className="flex items-center space-x-6">
+            {/* Score Display */}
+            <div className="bg-white/10 rounded-lg p-3 text-white">
+              <div className="text-sm opacity-80">Score</div>
+              <div className="text-2xl font-bold">{gameState.score}</div>
+            </div>
+            
+            {/* Lives Display */}
+            <div className="bg-white/10 rounded-lg p-3 text-white">
+              <div className="text-sm opacity-80">Lives</div>
+              <div className="text-2xl font-bold flex">
+                {Array.from({ length: gameState.lives }).map((_, i) => (
+                  <span key={i} className="text-red-500 mr-1">❤️</span>
+                ))}
+              </div>
+            </div>
+            
+            {/* Timer Display */}
+            <div className="bg-white/10 rounded-lg p-3 text-white">
+              <div className="text-sm opacity-80">Time</div>
+              <div className="text-2xl font-bold">{Math.ceil(gameState.timeRemaining)}s</div>
+            </div>
+            
+            {/* Controls */}
+            <div className="flex gap-2 pointer-events-auto">
+              <Button 
+                variant={isPaused ? "default" : "outline"}
+                onClick={togglePause}
+                className="bg-white/20 text-white hover:bg-white/40"
+              >
+                {isPaused ? "Resume" : "Pause"}
+              </Button>
+              <Link href="/">
+                <Button variant="outline" className="bg-white/20 text-white hover:bg-white/40">
+                  Exit
+                </Button>
+              </Link>
+            </div>
+          </div>
         </div>
         
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-md">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Lives</div>
-          <div className="text-2xl font-bold flex">
-            {Array.from({ length: gameState.lives }).map((_, i) => (
-              <span key={i} className="text-red-500 mr-1">❤️</span>
+        {/* Target Word Display (Center Top) */}
+        <div className="absolute top-20 left-1/2 transform -translate-x-1/2 bg-black/30 backdrop-blur-sm px-6 py-3 rounded-full pointer-events-auto">
+          <div className="text-center">
+            <h2 className="text-xl font-bold text-white">Target: {gameState.targetWord}</h2>
+          </div>
+        </div>
+        
+        {/* Current Progress (Bottom Center) */}
+        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 bg-black/30 backdrop-blur-sm p-4 rounded-lg pointer-events-auto">
+          <div className="flex gap-2 justify-center">
+            {gameState.targetWord.split('').map((letter, index) => (
+              <span 
+                key={index} 
+                className={`inline-block w-12 h-12 flex items-center justify-center rounded-md text-xl font-bold ${
+                  index < gameState.currentWord.length 
+                    ? 'bg-green-500/80 text-white' 
+                    : 'bg-white/20 text-white/50'
+                }`}
+              >
+                {index < gameState.currentWord.length ? gameState.currentWord[index] : letter}
+              </span>
             ))}
           </div>
         </div>
         
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-md">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Time</div>
-          <div className="text-2xl font-bold">{Math.ceil(gameState.timeRemaining)}s</div>
-        </div>
-        
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-md">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Difficulty</div>
-          <div className="text-2xl font-bold capitalize">{gameState.difficulty}</div>
-        </div>
-      </div>
-      
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-lg mb-8">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold">Current Target: {gameState.targetWord}</h2>
+        {/* Difficulty Controls (Bottom Right) */}
+        <div className="absolute bottom-8 right-8 bg-black/30 backdrop-blur-sm p-3 rounded-lg pointer-events-auto">
           <div className="flex space-x-2">
             <Button 
               size="sm" 
               variant={gameState.difficulty === 'easy' ? 'default' : 'outline'} 
               onClick={() => handleDifficultyChange('easy')}
+              className={gameState.difficulty === 'easy' ? 'bg-green-500 hover:bg-green-600' : 'bg-white/20 text-white hover:bg-white/40'}
             >
               Easy
             </Button>
@@ -95,6 +131,7 @@ export default function GamePage() {
               size="sm" 
               variant={gameState.difficulty === 'medium' ? 'default' : 'outline'} 
               onClick={() => handleDifficultyChange('medium')}
+              className={gameState.difficulty === 'medium' ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-white/20 text-white hover:bg-white/40'}
             >
               Medium
             </Button>
@@ -102,67 +139,41 @@ export default function GamePage() {
               size="sm" 
               variant={gameState.difficulty === 'hard' ? 'default' : 'outline'} 
               onClick={() => handleDifficultyChange('hard')}
+              className={gameState.difficulty === 'hard' ? 'bg-red-500 hover:bg-red-600' : 'bg-white/20 text-white hover:bg-white/40'}
             >
               Hard
             </Button>
           </div>
         </div>
         
-        {/* Game canvas component */}
-        <GameCanvas 
-          letters={gameState.letters} 
-          onShootLetter={shootLetter} 
-        />
-        
-        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/30 rounded-md">
-          <p className="text-sm text-blue-800 dark:text-blue-200">
+        {/* Game Tip (Bottom Left) */}
+        <div className="absolute bottom-8 left-8 bg-black/30 backdrop-blur-sm p-3 rounded-lg max-w-xs">
+          <p className="text-sm text-white/80">
             <strong>Tip:</strong> Click the correct letters in order to spell &quot;{gameState.targetWord}&quot;. 
-            Click and drag to rotate the scene. Scroll to zoom in and out.
+            Drag to rotate the scene. Scroll to zoom.
           </p>
-        </div>
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-lg">
-          <h2 className="text-xl font-semibold mb-4">Controls</h2>
-          <ul className="list-disc pl-6 space-y-2 text-gray-700 dark:text-gray-300">
-            <li>Click on letters to select them (in the correct order)</li>
-            <li>Drag to rotate the view</li>
-            <li>Scroll to zoom in and out</li>
-          </ul>
-        </div>
-        
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-lg">
-          <h2 className="text-xl font-semibold mb-4">Current Progress</h2>
-          <div className="flex gap-2 text-2xl font-bold">
-            {gameState.targetWord.split('').map((letter, index) => (
-              <span 
-                key={index} 
-                className={`inline-block w-10 h-10 flex items-center justify-center rounded-md ${
-                  index < gameState.currentWord.length 
-                    ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100' 
-                    : 'bg-blue-100 dark:bg-blue-900 text-gray-400 dark:text-gray-600'
-                }`}
-              >
-                {index < gameState.currentWord.length ? gameState.currentWord[index] : '_'}
-              </span>
-            ))}
-          </div>
         </div>
       </div>
       
       {/* Game Over Modal */}
       {showGameOver && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-8 max-w-md w-full">
-            <h2 className="text-2xl font-bold mb-4">Game Over</h2>
-            <p className="mb-6 text-lg">Your final score: <span className="font-bold">{gameState.score}</span></p>
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="bg-gray-900 border border-gray-700 rounded-lg p-8 max-w-md w-full text-white">
+            <h2 className="text-3xl font-bold mb-4">Game Over</h2>
+            <p className="mb-6 text-xl">Your final score: <span className="font-bold text-green-400">{gameState.score}</span></p>
             
             <div className="flex justify-end space-x-4">
-              <Button variant="outline" onClick={() => setShowGameOver(false)}>
+              <Button 
+                variant="outline" 
+                onClick={() => setShowGameOver(false)} 
+                className="border-gray-600 text-gray-300 hover:bg-gray-800"
+              >
                 Close
               </Button>
-              <Button onClick={handleRestart}>
+              <Button 
+                onClick={handleRestart}
+                className="bg-green-600 hover:bg-green-700 text-white"
+              >
                 Play Again
               </Button>
             </div>
