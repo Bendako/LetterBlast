@@ -4,9 +4,15 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Globe } from 'lucide-react';
 import { useLanguage } from '@/hooks/language';
+import { usePathname } from 'next/navigation';
 
 export function LanguageToggle() {
   const { language, toggleLanguage } = useLanguage();
+  const pathname = usePathname();
+  
+  // Only show the language toggle on the homepage
+  const isGamePage = pathname === '/game' || pathname.startsWith('/game/');
+  if (isGamePage) return null;
   
   return (
     <Button 
