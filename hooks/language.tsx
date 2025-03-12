@@ -189,7 +189,7 @@ const translations = {
     'progress.task.leaderboards': 'טבלאות דירוג',
     
     // Tech Stack Section
-    'techStack.title': 'מחסנית טכנולוגיה',
+    'techStack.title': 'טכנולוגיות',
     
     // How to Play
     'howToPlay.title': 'איך לשחק',
