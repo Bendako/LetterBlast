@@ -21,57 +21,63 @@ export default function Home() {
 
   const phases = [
     { 
-      name: "Phase 1: Core Functionality", 
+      name: t('progress.phase1'), 
       progress: 70, 
       tasks: [
-        { name: "Initialize Next.js project", completed: true },
-        { name: "Set up Tailwind CSS", completed: true },
-        { name: "Set up shadcn/ui component library", completed: true },
-        { name: "Create project folder structure", completed: true },
-        { name: "Add Three.js integration", completed: true },
-        { name: "Create basic state management", completed: true },
-        { name: "Implement 3D letter generation", completed: true },
-        { name: "Build shooting mechanics", completed: true },
-        { name: "Create word completion logic", completed: true },
-        { name: "Implement game difficulty levels", completed: true },
-        { name: "Add sound effects", completed: false },
+        { name: t('progress.task.nextjs'), completed: true },
+        { name: t('progress.task.tailwind'), completed: true },
+        { name: t('progress.task.shadcn'), completed: true },
+        { name: t('progress.task.folderStructure'), completed: true },
+        { name: t('progress.task.threejs'), completed: true },
+        { name: t('progress.task.stateManagement'), completed: true },
+        { name: t('progress.task.letterGeneration'), completed: true },
+        { name: t('progress.task.shootingMechanics'), completed: true },
+        { name: t('progress.task.wordCompletion'), completed: true },
+        { name: t('progress.task.difficultyLevels'), completed: true },
+        { name: t('progress.task.soundEffects'), completed: false },
       ]
     },
     { 
-      name: "Phase 2: Enhanced Experience", 
+      name: t('progress.phase2'), 
       progress: 10,
       tasks: [
-        { name: "Settings page", completed: false },
-        { name: "Visual enhancements", completed: false },
-        { name: "Particle effects", completed: false },
-        { name: "Audio integration", completed: false },
-        { name: "Word selection API", completed: false },
-        { name: "Difficulty selection", completed: true },
-        { name: "Thematic environments", completed: true },
+        { name: t('progress.task.settingsPage'), completed: false },
+        { name: t('progress.task.visualEnhancements'), completed: false },
+        { name: t('progress.task.particleEffects'), completed: false },
+        { name: t('progress.task.audioIntegration'), completed: false },
+        { name: t('progress.task.wordSelectionApi'), completed: false },
+        { name: t('progress.task.difficultySelection'), completed: true },
+        { name: t('progress.task.thematicEnvironments'), completed: true },
       ]
     },
     { 
-      name: "Phase 3: Polish & Optimization", 
+      name: t('progress.phase3'), 
       progress: 0,
       tasks: [
-        { name: "Mobile optimization", completed: false },
-        { name: "Performance improvements", completed: false },
-        { name: "UX enhancements", completed: false },
-        { name: "Additional content", completed: false },
-        { name: "Achievement system", completed: false },
+        { name: t('progress.task.mobileOptimization'), completed: false },
+        { name: t('progress.task.performanceImprovements'), completed: false },
+        { name: t('progress.task.uxEnhancements'), completed: false },
+        { name: t('progress.task.additionalContent'), completed: false },
+        { name: t('progress.task.achievementSystem'), completed: false },
       ]
     },
     { 
-      name: "Phase 4: Backend Integration", 
+      name: t('progress.phase4'), 
       progress: 0,
       tasks: [
-        { name: "Convex setup", completed: false },
-        { name: "User accounts", completed: false },
-        { name: "Progress tracking", completed: false },
-        { name: "Social features", completed: false },
-        { name: "Leaderboards", completed: false },
+        { name: t('progress.task.convexSetup'), completed: false },
+        { name: t('progress.task.userAccounts'), completed: false },
+        { name: t('progress.task.progressTracking'), completed: false },
+        { name: t('progress.task.socialFeatures'), completed: false },
+        { name: t('progress.task.leaderboards'), completed: false },
       ]
     }
+  ];
+
+  // Colors for the letter tiles
+  const letterColors = [
+    'bg-orange-500', 'bg-blue-500', 'bg-pink-500', 'bg-emerald-500',
+    'bg-purple-500', 'bg-amber-500', 'bg-cyan-500', 'bg-fuchsia-500'
   ];
 
   return (
@@ -110,11 +116,7 @@ export default function Home() {
               {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'].map((letter, i) => (
                 <div 
                   key={i} 
-                  className="w-16 h-16 rounded-lg flex items-center justify-center transform rotate-3 hover:rotate-0 transition-transform"
-                  style={{
-                    backgroundColor: ['#ff9900', '#00aaff', '#ff00aa', '#00ffaa', '#aa00ff', '#ffaa00', '#00ffff', '#ff00ff'][i],
-                    animation: `float ${2 + i % 3}s ease-in-out infinite alternate`
-                  }}
+                  className={`w-16 h-16 rounded-lg flex items-center justify-center rotate-3 hover:rotate-0 transition-transform ${letterColors[i]} animate-bounce`}
                 >
                   <span className="text-white text-3xl font-bold">{letter}</span>
                 </div>
@@ -171,7 +173,7 @@ export default function Home() {
               <div className="space-y-2 mt-4">
                 {phase.tasks.map((task, taskIndex) => (
                   <div key={taskIndex} className="flex items-center">
-                    <div className={`w-4 h-4 rounded-full mr-3 flex-shrink-0 ${task.completed ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`}></div>
+                    <div className={`w-4 h-4 rounded-full me-3 flex-shrink-0 ${task.completed ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`}></div>
                     <span className={`${task.completed ? 'text-gray-800 dark:text-gray-200' : 'text-gray-500 dark:text-gray-400'}`}>
                       {task.name}
                     </span>
@@ -218,7 +220,7 @@ export default function Home() {
         <div className="grid md:grid-cols-2 gap-8">
           <div className="space-y-4">
             <div className="flex items-start">
-              <div className="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-4 mt-1 flex-shrink-0">1</div>
+              <div className="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center me-4 mt-1 flex-shrink-0">1</div>
               <div>
                 <h3 className="font-bold text-xl mb-2 text-gray-800 dark:text-gray-100">{t('howToPlay.step1')}</h3>
                 <p className="text-gray-600 dark:text-gray-300">{t('howToPlay.step1Desc')}</p>
@@ -226,7 +228,7 @@ export default function Home() {
             </div>
             
             <div className="flex items-start">
-              <div className="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-4 mt-1 flex-shrink-0">2</div>
+              <div className="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center me-4 mt-1 flex-shrink-0">2</div>
               <div>
                 <h3 className="font-bold text-xl mb-2 text-gray-800 dark:text-gray-100">{t('howToPlay.step2')}</h3>
                 <p className="text-gray-600 dark:text-gray-300">{t('howToPlay.step2Desc')}</p>
@@ -236,7 +238,7 @@ export default function Home() {
           
           <div className="space-y-4">
             <div className="flex items-start">
-              <div className="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-4 mt-1 flex-shrink-0">3</div>
+              <div className="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center me-4 mt-1 flex-shrink-0">3</div>
               <div>
                 <h3 className="font-bold text-xl mb-2 text-gray-800 dark:text-gray-100">{t('howToPlay.step3')}</h3>
                 <p className="text-gray-600 dark:text-gray-300">{t('howToPlay.step3Desc')}</p>
@@ -244,7 +246,7 @@ export default function Home() {
             </div>
             
             <div className="flex items-start">
-              <div className="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-4 mt-1 flex-shrink-0">4</div>
+              <div className="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center me-4 mt-1 flex-shrink-0">4</div>
               <div>
                 <h3 className="font-bold text-xl mb-2 text-gray-800 dark:text-gray-100">{t('howToPlay.step4')}</h3>
                 <p className="text-gray-600 dark:text-gray-300">{t('howToPlay.step4Desc')}</p>
@@ -282,37 +284,12 @@ export default function Home() {
         <p className="text-gray-600 dark:text-gray-400 mb-4">
           {t('footer.rights')}
         </p>
-        <div className="flex justify-center space-x-4">
+        <div className="flex justify-center space-x-4 rtl:space-x-reverse">
           <a href="#" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400">{t('footer.terms')}</a>
           <a href="#" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400">{t('footer.privacy')}</a>
           <a href="#" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400">{t('footer.contact')}</a>
         </div>
       </footer>
-
-      {/* Add some CSS for floating animation and RTL support */}
-      <style jsx global>{`
-        @keyframes float {
-          0% { transform: translateY(0px) rotate(3deg); }
-          100% { transform: translateY(-10px) rotate(-3deg); }
-        }
-        
-        /* RTL adjustments */
-        [dir="rtl"] .flex-start {
-          justify-content: flex-start;
-        }
-        
-        [dir="rtl"] .mr-3,
-        [dir="rtl"] .mr-4 {
-          margin-right: 0;
-          margin-left: 0.75rem;
-        }
-        
-        [dir="rtl"] .ml-3,
-        [dir="rtl"] .ml-4 {
-          margin-left: 0;
-          margin-right: 0.75rem;
-        }
-      `}</style>
     </div>
   );
 }

@@ -46,6 +46,48 @@ const translations = {
     'progress.title': 'Development Progress',
     'progress.complete': 'Complete',
     
+    // Development Phases
+    'progress.phase1': 'Phase 1: Core Functionality',
+    'progress.phase2': 'Phase 2: Enhanced Experience',
+    'progress.phase3': 'Phase 3: Polish & Optimization',
+    'progress.phase4': 'Phase 4: Backend Integration',
+    
+    // Phase 1 Tasks
+    'progress.task.nextjs': 'Initialize Next.js project',
+    'progress.task.tailwind': 'Set up Tailwind CSS',
+    'progress.task.shadcn': 'Set up shadcn/ui component library',
+    'progress.task.folderStructure': 'Create project folder structure',
+    'progress.task.threejs': 'Add Three.js integration',
+    'progress.task.stateManagement': 'Create basic state management',
+    'progress.task.letterGeneration': 'Implement 3D letter generation',
+    'progress.task.shootingMechanics': 'Build shooting mechanics',
+    'progress.task.wordCompletion': 'Create word completion logic',
+    'progress.task.difficultyLevels': 'Implement game difficulty levels',
+    'progress.task.soundEffects': 'Add sound effects',
+    
+    // Phase 2 Tasks
+    'progress.task.settingsPage': 'Settings page',
+    'progress.task.visualEnhancements': 'Visual enhancements',
+    'progress.task.particleEffects': 'Particle effects',
+    'progress.task.audioIntegration': 'Audio integration',
+    'progress.task.wordSelectionApi': 'Word selection API',
+    'progress.task.difficultySelection': 'Difficulty selection',
+    'progress.task.thematicEnvironments': 'Thematic environments',
+    
+    // Phase 3 Tasks
+    'progress.task.mobileOptimization': 'Mobile optimization',
+    'progress.task.performanceImprovements': 'Performance improvements',
+    'progress.task.uxEnhancements': 'UX enhancements',
+    'progress.task.additionalContent': 'Additional content',
+    'progress.task.achievementSystem': 'Achievement system',
+    
+    // Phase 4 Tasks
+    'progress.task.convexSetup': 'Convex setup',
+    'progress.task.userAccounts': 'User accounts',
+    'progress.task.progressTracking': 'Progress tracking',
+    'progress.task.socialFeatures': 'Social features',
+    'progress.task.leaderboards': 'Leaderboards',
+    
     // Tech Stack Section
     'techStack.title': 'Tech Stack',
     
@@ -103,6 +145,48 @@ const translations = {
     // Development Progress Section
     'progress.title': 'התקדמות פיתוח',
     'progress.complete': 'הושלם',
+    
+    // Development Phases
+    'progress.phase1': 'שלב 1: פונקציונליות ליבה',
+    'progress.phase2': 'שלב 2: חוויה משופרת',
+    'progress.phase3': 'שלב 3: ליטוש ואופטימיזציה',
+    'progress.phase4': 'שלב 4: אינטגרציית צד שרת',
+    
+    // Phase 1 Tasks
+    'progress.task.nextjs': 'אתחול פרויקט Next.js',
+    'progress.task.tailwind': 'הגדרת Tailwind CSS',
+    'progress.task.shadcn': 'הגדרת ספריית רכיבים shadcn/ui',
+    'progress.task.folderStructure': 'יצירת מבנה תיקיות לפרויקט',
+    'progress.task.threejs': 'הוספת אינטגרציה עם Three.js',
+    'progress.task.stateManagement': 'יצירת ניהול מצב בסיסי',
+    'progress.task.letterGeneration': 'מימוש יצירת אותיות תלת-ממדיות',
+    'progress.task.shootingMechanics': 'בניית מכניקת ירי',
+    'progress.task.wordCompletion': 'יצירת לוגיקה להשלמת מילים',
+    'progress.task.difficultyLevels': 'מימוש רמות קושי במשחק',
+    'progress.task.soundEffects': 'הוספת אפקטים קוליים',
+    
+    // Phase 2 Tasks
+    'progress.task.settingsPage': 'דף הגדרות',
+    'progress.task.visualEnhancements': 'שיפורים חזותיים',
+    'progress.task.particleEffects': 'אפקטי חלקיקים',
+    'progress.task.audioIntegration': 'אינטגרציית אודיו',
+    'progress.task.wordSelectionApi': 'ממשק API לבחירת מילים',
+    'progress.task.difficultySelection': 'בחירת רמת קושי',
+    'progress.task.thematicEnvironments': 'סביבות נושאיות',
+    
+    // Phase 3 Tasks
+    'progress.task.mobileOptimization': 'אופטימיזציה למכשירים ניידים',
+    'progress.task.performanceImprovements': 'שיפורי ביצועים',
+    'progress.task.uxEnhancements': 'שיפורי חווית משתמש',
+    'progress.task.additionalContent': 'תוכן נוסף',
+    'progress.task.achievementSystem': 'מערכת הישגים',
+    
+    // Phase 4 Tasks
+    'progress.task.convexSetup': 'הגדרת Convex',
+    'progress.task.userAccounts': 'חשבונות משתמשים',
+    'progress.task.progressTracking': 'מעקב אחר התקדמות',
+    'progress.task.socialFeatures': 'תכונות חברתיות',
+    'progress.task.leaderboards': 'טבלאות דירוג',
     
     // Tech Stack Section
     'techStack.title': 'מחסנית טכנולוגיה',
