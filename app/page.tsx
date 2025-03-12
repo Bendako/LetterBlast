@@ -19,6 +19,7 @@ export default function Home() {
     { name: t('feature.feedback'), description: t('feature.feedbackDesc') },
   ];
 
+  // Updated phases with accurate progress and task completion status
   const phases = [
     { 
       name: t('progress.phase1'), 
@@ -35,6 +36,7 @@ export default function Home() {
         { name: t('progress.task.wordCompletion'), completed: true },
         { name: t('progress.task.difficultyLevels'), completed: true },
         { name: t('progress.task.soundEffects'), completed: false },
+        { name: t('progress.task.i18n') || 'Internationalization', completed: true },
       ]
     },
     { 
@@ -48,6 +50,7 @@ export default function Home() {
         { name: t('progress.task.wordSelectionApi'), completed: false },
         { name: t('progress.task.difficultySelection'), completed: true },
         { name: t('progress.task.thematicEnvironments'), completed: true },
+        { name: t('progress.task.rtlSupport') || 'RTL Support', completed: true },
       ]
     },
     { 

@@ -2,11 +2,6 @@
 
 This document outlines the development roadmap for the LetterBlast game, organized into phases with specific tasks. Use this as a guide to track progress and manage development priorities.
 
-
-תיקונים לעשות:
-1. למרכז אותיות המטרה
-2. רמת הקושי עולה כאשר המילים חוזרות על עצמן
-
 ## Phase 1: Core Functionality (70% Complete)
 
 ### Project Setup
@@ -30,6 +25,7 @@ This document outlines the development roadmap for the LetterBlast game, organiz
 - [x] Build navigation buttons (Play, Settings, Instructions)
 - [ ] Add animated 3D letter background for start page
 - [x] Implement responsive design for different screen sizes
+- [x] Add internationalization support (English and Hebrew)
 
 ### Game Page
 - [x] Create basic game page layout
@@ -42,6 +38,7 @@ This document outlines the development roadmap for the LetterBlast game, organiz
 - [x] Create lives/attempts display
 - [x] Build pause functionality
 - [x] Implement exit game button and confirmation dialog
+- [x] Add difficulty selection on game page
 
 ### Game Over Page
 - [x] Design basic game over page layout
@@ -74,7 +71,8 @@ This document outlines the development roadmap for the LetterBlast game, organiz
 - [x] Create thematic environment backgrounds
 - [ ] Add animated transitions between pages
 - [x] Improve UI with consistent styling
-- [ ] Enhance button and interactive element visuals
+- [x] Enhance button and interactive element visuals
+- [x] Implement internationalization support (Hebrew RTL)
 
 ### Audio Integration
 - [ ] Add background music implementation
@@ -159,33 +157,18 @@ This document outlines the development roadmap for the LetterBlast game, organiz
 - [ ] Add community challenges system
 - [ ] Implement player vs player challenge mode
 
-## Development Priorities
+## Issues to Fix
 
-1. **Complete Phase 1 (Core Gameplay)** - Finish remaining core tasks:
-   - Add basic sound effects
-   - Improve letter hit feedback
-   - Complete statistics display for game over screen
-
-2. **Begin Audio Implementation** - Add sound effects for:
-   - Letter hits (correct/incorrect)
-   - Word completion
-   - Game over/success
-   - Background ambient music
-
-3. **Enhance Visual Experience** - Focus on:
-   - Particle effects for letter hits
-   - Improved animations
-   - Enhanced UI feedback
-
-4. **Mobile Support** - Make the game playable on mobile devices:
-   - Touch controls
-   - Mobile-friendly UI
-   - Performance optimizations
+1. Center target word letters
+2. Improve difficulty progression (words currently repeat too often)
+3. Add more variety to the word list
+4. Implement proper feedback when hitting incorrect letters
+5. Add visual celebration effect when completing a word
 
 ## Next Tasks
 
-1. Implement basic sound effect system
-2. Add particle effects for letter hits
+1. Implement basic sound effect system for letter hits, word completion, and game over
+2. Add particle effects for letter hits (success and failure)
 3. Create better visual feedback for correct/incorrect letter selection
 4. Begin work on settings page for audio/visual controls
 5. Create mobile touch controls
