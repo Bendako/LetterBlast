@@ -4,15 +4,19 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import Link from 'next/link';
+import { useLanguage } from '@/hooks/language';
+import { LanguageToggle } from '@/components/language-toggle';
 
 export default function Home() {
+  const { t } = useLanguage();
+  
   const features = [
-    { name: "3D Gameplay", description: "Shoot floating letters in a 3D space to spell words" },
-    { name: "Multiple Difficulty Levels", description: "Easy, Medium, and Hard modes for all skill levels" },
-    { name: "Real-time Physics", description: "Letters move dynamically with realistic motion" },
-    { name: "Cross-Platform Support", description: "Optimized for both desktop and mobile devices" },
-    { name: "Educational Value", description: "Improve spelling and vocabulary while having fun" },
-    { name: "Instant Feedback", description: "Visual and audio feedback for correct letter selection" },
+    { name: t('feature.3dGameplay'), description: t('feature.3dGameplayDesc') },
+    { name: t('feature.difficultyLevels'), description: t('feature.difficultyLevelsDesc') },
+    { name: t('feature.physics'), description: t('feature.physicsDesc') },
+    { name: t('feature.crossPlatform'), description: t('feature.crossPlatformDesc') },
+    { name: t('feature.educational'), description: t('feature.educationalDesc') },
+    { name: t('feature.feedback'), description: t('feature.feedbackDesc') },
   ];
 
   const phases = [
@@ -72,22 +76,25 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-blue-950">
+      {/* Language Toggle Button */}
+      <LanguageToggle />
+      
       {/* Hero Section */}
       <div className="flex flex-col items-center justify-center py-24 px-4 text-center">
         <h1 className="text-6xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-6">
-          LetterBlast 🎮
+          {t('hero.title')}
         </h1>
         <p className="text-xl max-w-2xl mb-8 text-gray-700 dark:text-gray-300">
-          An interactive 3D shooting game where players practice English by shooting letters to form words.
+          {t('hero.description')}
         </p>
         <div className="flex gap-4">
           <Link href="/game">
             <Button className="bg-blue-600 hover:bg-blue-700">
-              Play Now
+              {t('hero.playNow')}
             </Button>
           </Link>
           <Button variant="outline" onClick={() => window.open('https://github.com/yourusername/LetterBlast', '_blank')}>
-            GitHub Repo
+            {t('hero.githubRepo')}
           </Button>
         </div>
       </div>
@@ -97,7 +104,7 @@ export default function Home() {
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl overflow-hidden">
           <div className="aspect-video relative bg-gradient-to-br from-indigo-500 to-purple-700 flex items-center justify-center">
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-white text-xl font-bold">Game Preview</div>
+              <div className="text-white text-xl font-bold">{t('preview.gamePreview')}</div>
             </div>
             <div className="grid grid-cols-4 gap-4 p-8">
               {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'].map((letter, i) => (
@@ -115,13 +122,13 @@ export default function Home() {
             </div>
           </div>
           <div className="p-6 bg-white dark:bg-gray-800">
-            <h3 className="text-xl font-bold mb-2 text-gray-800 dark:text-white">Ready to play?</h3>
+            <h3 className="text-xl font-bold mb-2 text-gray-800 dark:text-white">{t('preview.readyToPlay')}</h3>
             <p className="text-gray-600 dark:text-gray-300 mb-4">
-              Click &quot;Play Now&quot; to jump into the 3D word-shooting experience! Spell words by shooting the correct letters in order.
+              {t('preview.readyDescription')}
             </p>
             <Link href="/game">
               <Button className="w-full bg-blue-600 hover:bg-blue-700">
-                Start Playing
+                {t('preview.startPlaying')}
               </Button>
             </Link>
           </div>
@@ -131,7 +138,7 @@ export default function Home() {
       {/* Features Section */}
       <div className="max-w-6xl mx-auto px-4 py-16">
         <h2 className="text-3xl font-bold text-center mb-12 text-gray-800 dark:text-gray-100">
-          Key Features
+          {t('features.title')}
         </h2>
         <div className="grid md:grid-cols-3 gap-8">
           {features.map((feature, index) => (
@@ -150,7 +157,7 @@ export default function Home() {
       {/* Development Progress Section */}
       <div className="max-w-4xl mx-auto px-4 py-16">
         <h2 className="text-3xl font-bold text-center mb-12 text-gray-800 dark:text-gray-100">
-          Development Progress
+          {t('progress.title')}
         </h2>
         
         <div className="space-y-10">
@@ -159,7 +166,7 @@ export default function Home() {
               <h3 className="text-xl font-semibold mb-2 text-gray-800 dark:text-gray-100">{phase.name}</h3>
               <div className="mb-4">
                 <Progress value={phase.progress} className="h-2" />
-                <p className="text-right text-sm text-gray-500 dark:text-gray-400 mt-1">{phase.progress}% Complete</p>
+                <p className="text-right text-sm text-gray-500 dark:text-gray-400 mt-1">{phase.progress}% {t('progress.complete')}</p>
               </div>
               <div className="space-y-2 mt-4">
                 {phase.tasks.map((task, taskIndex) => (
@@ -179,7 +186,7 @@ export default function Home() {
       {/* Tech Stack Section */}
       <div className="max-w-4xl mx-auto px-4 py-16">
         <h2 className="text-3xl font-bold text-center mb-12 text-gray-800 dark:text-gray-100">
-          Tech Stack
+          {t('techStack.title')}
         </h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 text-center">
           {[
@@ -205,7 +212,7 @@ export default function Home() {
       {/* How to Play Section */}
       <div className="max-w-4xl mx-auto px-4 py-16 bg-white dark:bg-gray-800 rounded-xl shadow-lg my-16">
         <h2 className="text-3xl font-bold text-center mb-8 text-gray-800 dark:text-gray-100">
-          How to Play
+          {t('howToPlay.title')}
         </h2>
         
         <div className="grid md:grid-cols-2 gap-8">
@@ -213,16 +220,16 @@ export default function Home() {
             <div className="flex items-start">
               <div className="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-4 mt-1 flex-shrink-0">1</div>
               <div>
-                <h3 className="font-bold text-xl mb-2 text-gray-800 dark:text-gray-100">Target Word</h3>
-                <p className="text-gray-600 dark:text-gray-300">Look at the target word at the top of the screen.</p>
+                <h3 className="font-bold text-xl mb-2 text-gray-800 dark:text-gray-100">{t('howToPlay.step1')}</h3>
+                <p className="text-gray-600 dark:text-gray-300">{t('howToPlay.step1Desc')}</p>
               </div>
             </div>
             
             <div className="flex items-start">
               <div className="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-4 mt-1 flex-shrink-0">2</div>
               <div>
-                <h3 className="font-bold text-xl mb-2 text-gray-800 dark:text-gray-100">Find Letters</h3>
-                <p className="text-gray-600 dark:text-gray-300">Locate the floating letters that match your target word.</p>
+                <h3 className="font-bold text-xl mb-2 text-gray-800 dark:text-gray-100">{t('howToPlay.step2')}</h3>
+                <p className="text-gray-600 dark:text-gray-300">{t('howToPlay.step2Desc')}</p>
               </div>
             </div>
           </div>
@@ -231,16 +238,16 @@ export default function Home() {
             <div className="flex items-start">
               <div className="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-4 mt-1 flex-shrink-0">3</div>
               <div>
-                <h3 className="font-bold text-xl mb-2 text-gray-800 dark:text-gray-100">Shoot in Order</h3>
-                <p className="text-gray-600 dark:text-gray-300">Click on the letters in the correct order to spell the word.</p>
+                <h3 className="font-bold text-xl mb-2 text-gray-800 dark:text-gray-100">{t('howToPlay.step3')}</h3>
+                <p className="text-gray-600 dark:text-gray-300">{t('howToPlay.step3Desc')}</p>
               </div>
             </div>
             
             <div className="flex items-start">
               <div className="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center mr-4 mt-1 flex-shrink-0">4</div>
               <div>
-                <h3 className="font-bold text-xl mb-2 text-gray-800 dark:text-gray-100">Score Points</h3>
-                <p className="text-gray-600 dark:text-gray-300">Complete words to score points. Harder difficulties award more points!</p>
+                <h3 className="font-bold text-xl mb-2 text-gray-800 dark:text-gray-100">{t('howToPlay.step4')}</h3>
+                <p className="text-gray-600 dark:text-gray-300">{t('howToPlay.step4Desc')}</p>
               </div>
             </div>
           </div>
@@ -249,14 +256,14 @@ export default function Home() {
 
       {/* Call to Action */}
       <div className="bg-blue-600 dark:bg-blue-800 text-white py-16 px-4 text-center">
-        <h2 className="text-3xl font-bold mb-4">Ready to improve your spelling skills?</h2>
+        <h2 className="text-3xl font-bold mb-4">{t('cta.title')}</h2>
         <p className="max-w-2xl mx-auto mb-8">
-          Jump into LetterBlast now and start building your vocabulary while having fun!
+          {t('cta.description')}
         </p>
         <div className="flex gap-4 justify-center">
           <Link href="/game">
             <Button size="lg" variant="outline" className="bg-transparent border-white text-white hover:bg-white hover:text-blue-600">
-              Start Playing
+              {t('cta.startPlaying')}
             </Button>
           </Link>
           <Button 
@@ -265,7 +272,7 @@ export default function Home() {
             className="bg-white text-blue-600 hover:bg-blue-50"
             onClick={() => window.open('https://github.com/yourusername/LetterBlast', '_blank')}
           >
-            Contribute
+            {t('cta.contribute')}
           </Button>
         </div>
       </div>
@@ -273,20 +280,37 @@ export default function Home() {
       {/* Footer */}
       <footer className="bg-gray-100 dark:bg-gray-900 py-8 px-4 text-center">
         <p className="text-gray-600 dark:text-gray-400 mb-4">
-          © {new Date().getFullYear()} LetterBlast Game • All Rights Reserved
+          {t('footer.rights')}
         </p>
         <div className="flex justify-center space-x-4">
-          <a href="#" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400">Terms</a>
-          <a href="#" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400">Privacy</a>
-          <a href="#" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400">Contact</a>
+          <a href="#" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400">{t('footer.terms')}</a>
+          <a href="#" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400">{t('footer.privacy')}</a>
+          <a href="#" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400">{t('footer.contact')}</a>
         </div>
       </footer>
 
-      {/* Add some CSS for the floating animation */}
+      {/* Add some CSS for floating animation and RTL support */}
       <style jsx global>{`
         @keyframes float {
           0% { transform: translateY(0px) rotate(3deg); }
           100% { transform: translateY(-10px) rotate(-3deg); }
+        }
+        
+        /* RTL adjustments */
+        [dir="rtl"] .flex-start {
+          justify-content: flex-start;
+        }
+        
+        [dir="rtl"] .mr-3,
+        [dir="rtl"] .mr-4 {
+          margin-right: 0;
+          margin-left: 0.75rem;
+        }
+        
+        [dir="rtl"] .ml-3,
+        [dir="rtl"] .ml-4 {
+          margin-left: 0;
+          margin-right: 0.75rem;
         }
       `}</style>
     </div>
