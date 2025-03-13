@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { useLanguage } from '@/hooks/language';
-import { LanguageToggle } from '@/components/language-toggle';
+import { Globe } from 'lucide-react';
 
 // Import icons 
 import { 
@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 
 export default function Home() {
-  const { t } = useLanguage();
+  const { t, language, toggleLanguage } = useLanguage();
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
@@ -102,9 +102,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-950 to-blue-950 text-white overflow-hidden">
-      {/* Language Toggle Button */}
-      <LanguageToggle />
-      
       {/* Navbar */}
       <motion.header 
         initial={{ y: -100, opacity: 0 }}
@@ -128,11 +125,23 @@ export default function Home() {
               <span>GitHub</span>
             </Link>
           </nav>
-          <Link href="/game">
-            <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white">
-              Play Now
+          <div className="flex items-center gap-3">
+            {/* Language Toggle Button integrated in navbar */}
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={toggleLanguage}
+              className="bg-black/30 border-gray-700 hover:bg-black/50 hover:border-gray-600"
+            >
+              <Globe className="w-4 h-4 mr-2" />
+              {language === 'en' ? 'עברית' : 'English'}
             </Button>
-          </Link>
+            <Link href="/game">
+              <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white">
+                Play Now
+              </Button>
+            </Link>
+          </div>
         </div>
       </motion.header>
 

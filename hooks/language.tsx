@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, createContext, useContext } from 'react';
-import { usePathname } from 'next/navigation';
 
 type Language = 'en' | 'he';
 
@@ -226,7 +225,6 @@ const LanguageContext = createContext<LanguageContextType>({
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [language, setLanguage] = useState<Language>('en');
   const isRTL = language === 'he';
-  const pathname = usePathname();
   
   // Toggle language function
   const toggleLanguage = () => {
@@ -238,15 +236,12 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     return translations[language][key as keyof typeof translations[typeof language]] || key;
   };
   
-  // Only apply RTL direction on the homepage, not the game page
+  // MODIFIED: Never apply RTL direction on the page
   useEffect(() => {
-    // Check if we're on the game page or any other page that should be LTR only
-    const isGamePage = pathname === '/game' || pathname.startsWith('/game/');
-    
-    // Only apply RTL if we're not on the game page and the language is Hebrew
-    document.documentElement.dir = (!isGamePage && isRTL) ? 'rtl' : 'ltr';
+    // Always keep LTR direction regardless of language
+    document.documentElement.dir = 'ltr';
     document.documentElement.lang = language;
-  }, [language, isRTL, pathname]);
+  }, [language]);
   
   return (
     <LanguageContext.Provider value={{ language, toggleLanguage, isRTL, t }}>
