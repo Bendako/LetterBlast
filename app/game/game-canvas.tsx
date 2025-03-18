@@ -91,16 +91,6 @@ const OutdoorShootingRangeEnvironment = () => {
         <meshStandardMaterial color="#795548" />
       </mesh>
       
-      {/* Simple target circles on the wall */}
-      <mesh position={[-5, 2, -29.7]} receiveShadow>
-        <circleGeometry args={[1.5, 32]} />
-        <meshStandardMaterial color="#f44336" />
-      </mesh>
-      <mesh position={[5, 2, -29.7]} receiveShadow>
-        <circleGeometry args={[1.5, 32]} />
-        <meshStandardMaterial color="#f44336" />
-      </mesh>
-      
       {/* Trees around the perimeter */}
       {[
         [-15, -2, -20],
@@ -119,7 +109,7 @@ const OutdoorShootingRangeEnvironment = () => {
           {/* Tree foliage */}
           <mesh position={[0, 5.5, 0]} castShadow>
             <coneGeometry args={[3, 5, 8]} />
-            <meshStandardMaterial color="#2E7D32" />
+            <meshStandardMaterial color="#228B22" />
           </mesh>
         </group>
       ))}
