@@ -1,4 +1,4 @@
-// Game engine for SpaceLetters
+// Game engine for LetterBlast
 // Handles core game mechanics, letter generation, scoring, etc.
 
 export type GameDifficulty = 'easy' | 'medium' | 'hard';
@@ -10,6 +10,8 @@ export type Letter = {
   color: string;
   velocity: [number, number, number];
   active: boolean;
+  // Add a missed property to track missed shots for feedback
+  missed?: boolean;
 };
 
 export type GameState = {
@@ -21,6 +23,11 @@ export type GameState = {
   letters: Letter[];
   timeRemaining: number;
   isGameOver: boolean;
+  // Add feedback properties
+  lastShotResult?: 'hit' | 'miss' | null;
+  comboCount: number;
+  lastShotLetterId?: string;
+  lastShotTimestamp?: number;
 };
 
 // Word lists for different difficulty levels
@@ -106,6 +113,8 @@ export const initializeGame = (difficulty: GameDifficulty = 'easy'): GameState =
     letters,
     timeRemaining: difficulty === 'easy' ? 60 : difficulty === 'medium' ? 45 : 30,
     isGameOver: false,
+    comboCount: 0,
+    lastShotResult: null,
   };
 };
 
@@ -125,6 +134,7 @@ const generateLettersForWord = (word: string, difficulty: GameDifficulty): Lette
         difficulty === 'easy' ? 0.005 : difficulty === 'medium' ? 0.01 : 0.015
       ),
       active: false,
+      missed: false,
     });
   });
   
@@ -152,6 +162,7 @@ const generateLettersForWord = (word: string, difficulty: GameDifficulty): Lette
         difficulty === 'easy' ? 0.005 : difficulty === 'medium' ? 0.01 : 0.015
       ),
       active: false,
+      missed: false,
     });
   }
   
@@ -208,6 +219,7 @@ export const updateGameState = (state: GameState, deltaTime: number): GameState 
         position: newPos,
         velocity: newVel,
         color: getRandomColor(), // New color for variety
+        missed: false, // Reset missed state when recycling
       };
     }
     
@@ -221,6 +233,8 @@ export const updateGameState = (state: GameState, deltaTime: number): GameState 
     ...state,
     letters: updatedLetters,
     timeRemaining,
+    // Reset shot result after a short time to avoid persisting feedback
+    lastShotResult: state.lastShotResult && Date.now() - (state.lastShotTimestamp || 0) > 500 ? null : state.lastShotResult,
   };
 };
 
@@ -243,6 +257,9 @@ export const handleLetterShot = (state: GameState, letterId: string): GameState 
       l.id === letterId ? { ...l, active: true } : l
     );
     
+    // Increment combo
+    const newComboCount = state.comboCount + 1;
+    
     // Check if word is complete
     if (newCurrentWord === targetWord) {
       // Calculate score based on difficulty and remaining time
@@ -252,7 +269,8 @@ export const handleLetterShot = (state: GameState, letterId: string): GameState 
         3;
       
       const timeBonus = Math.floor(state.timeRemaining * 0.1);
-      const wordScore = 10 * targetWord.length * difficultyMultiplier + timeBonus;
+      const comboBonus = state.comboCount * 5; // Add combo bonus
+      const wordScore = 10 * targetWord.length * difficultyMultiplier + timeBonus + comboBonus;
       
       // Get a new target word
       const newState = initializeGame(state.difficulty);
@@ -261,6 +279,9 @@ export const handleLetterShot = (state: GameState, letterId: string): GameState 
         ...newState,
         score: state.score + wordScore,
         lives: state.lives, // Maintain current lives
+        lastShotResult: 'hit',
+        lastShotLetterId: letterId,
+        lastShotTimestamp: Date.now(),
       };
     }
     
@@ -268,10 +289,26 @@ export const handleLetterShot = (state: GameState, letterId: string): GameState 
       ...state,
       currentWord: newCurrentWord,
       letters: updatedLetters,
+      lastShotResult: 'hit',
+      lastShotLetterId: letterId,
+      comboCount: newComboCount,
+      lastShotTimestamp: Date.now(),
     };
   } else {
-    // Wrong letter - no penalty
-    return state; // Just return the current state without modification
+    // Wrong letter - mark it as missed for visual feedback
+    const updatedLetters = state.letters.map(l => 
+      l.id === letterId ? { ...l, missed: true } : l
+    );
+    
+    // Reset combo on miss
+    return {
+      ...state,
+      comboCount: 0,
+      letters: updatedLetters,
+      lastShotResult: 'miss',
+      lastShotLetterId: letterId,
+      lastShotTimestamp: Date.now(),
+    };
   }
 };
 

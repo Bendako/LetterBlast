@@ -1,12 +1,253 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useMemo, Suspense } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls, Text, Billboard, Stars } from '@react-three/drei';
 import { Letter as LetterType } from '@/lib/game-engine';
 import * as THREE from 'three';
 import StarExplosion from '@/components/StarExplosion';
 import ExplosionSound from '@/components/ExplosionSound';
+
+// Type definition for missed shot sound props
+interface MissedShotSoundProps {
+  play: boolean;
+}
+
+// Add a missed shot sound component
+const MissedShotSound: React.FC<MissedShotSoundProps> = ({ play }) => {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  
+  useEffect(() => {
+    if (play && !audioRef.current) {
+      try {
+        // Create audio context
+        const AudioContextClass = window.AudioContext || 
+          ((window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext);
+        
+        const audioContext = new AudioContextClass();
+        
+        // Configure sound for missed shot - higher pitch, shorter duration
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(480, audioContext.currentTime);
+        oscillator.frequency.exponentialRampToValueAtTime(100, audioContext.currentTime + 0.2);
+        
+        gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+        
+        // Connect and play
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.start();
+        oscillator.stop(audioContext.currentTime + 0.2);
+        
+        // Cleanup
+        setTimeout(() => {
+          oscillator.disconnect();
+          gainNode.disconnect();
+        }, 300);
+        
+      } catch (error) {
+        console.error("Error playing missed shot sound:", error);
+      }
+    }
+    
+    return () => {
+      audioRef.current = null;
+    };
+  }, [play]);
+  
+  return null;
+};
+
+// Type definitions for LaserBeam props
+interface LaserBeamProps {
+  start: THREE.Vector3;
+  end: THREE.Vector3;
+  color: string;
+  duration?: number;
+}
+
+// Laser beam effect for shooting visualization
+const LaserBeam: React.FC<LaserBeamProps> = ({ 
+  start, 
+  end, 
+  color, 
+  duration = 0.3 
+}) => {
+  const ref = useRef<THREE.Mesh>(null);
+  const [visible, setVisible] = useState<boolean>(true);
+  
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setVisible(false);
+    }, duration * 1000);
+    
+    return () => clearTimeout(timer);
+  }, [duration]);
+  
+  if (!visible) return null;
+  
+  // Calculate direction and length
+  const direction = new THREE.Vector3().subVectors(end, start).normalize();
+  const distance = start.distanceTo(end);
+  const position = new THREE.Vector3().addVectors(start, direction.clone().multiplyScalar(distance / 2));
+  
+  // Calculate rotation to point from start to end
+  const quaternion = new THREE.Quaternion();
+  const matrix = new THREE.Matrix4().lookAt(start, end, new THREE.Vector3(0, 1, 0));
+  quaternion.setFromRotationMatrix(matrix);
+  
+  return (
+    <mesh ref={ref} position={[position.x, position.y, position.z]} quaternion={quaternion}>
+      <cylinderGeometry args={[0.03, 0.03, distance, 8]} />
+      <meshBasicMaterial color={color} transparent opacity={0.7} />
+    </mesh>
+  );
+};
+
+// Type definitions for MissEffect props
+interface MissEffectProps {
+  position: [number, number, number];
+}
+
+// Visual effect for missed shots
+const MissEffect: React.FC<MissEffectProps> = ({ position }) => {
+  interface Particle {
+    position: THREE.Vector3;
+    velocity: THREE.Vector3;
+    life: number;
+    maxLife: number;
+  }
+
+  const [particles, setParticles] = useState<Particle[]>(() => {
+    const result: Particle[] = [];
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2;
+      const speed = 0.03 + Math.random() * 0.02;
+      result.push({
+        position: new THREE.Vector3(0, 0, 0),
+        velocity: new THREE.Vector3(
+          Math.cos(angle) * speed,
+          Math.sin(angle) * speed,
+          0
+        ),
+        life: 1.0,
+        maxLife: 1.0,
+      });
+    }
+    return result;
+  });
+  
+  useFrame((_, delta) => {
+    setParticles(prev =>
+      prev
+        .map(particle => {
+          particle.position.add(particle.velocity);
+          particle.life -= delta * 2; // Faster fadeout than explosion
+          return particle;
+        })
+        .filter(particle => particle.life > 0)
+    );
+  });
+  
+  if (particles.length === 0) return null;
+  
+  return (
+    <group position={position}>
+      {particles.map((particle, index) => (
+        <mesh key={index} position={particle.position}>
+          <sphereGeometry args={[0.1 * (particle.life / particle.maxLife), 8, 8]} />
+          <meshBasicMaterial 
+            color="red" 
+            transparent={true} 
+            opacity={particle.life / particle.maxLife}
+          />
+        </mesh>
+      ))}
+    </group>
+  );
+};
+
+// Type definition for Raycaster props
+interface RaycasterProps {
+  onShoot: (data: { id: string | null; point: THREE.Vector3; start: THREE.Vector3 }) => void;
+}
+
+// Raycaster for detecting 3D object clicks
+const Raycaster: React.FC<RaycasterProps> = ({ onShoot }) => {
+  const { camera, gl, scene } = useThree();
+  const raycaster = useMemo(() => new THREE.Raycaster(), []);
+  const mouse = useMemo(() => new THREE.Vector2(), []);
+  
+  useEffect(() => {
+    const handleClick = (event: MouseEvent) => {
+      // Calculate mouse position in normalized device coordinates
+      mouse.x = (event.clientX / gl.domElement.clientWidth) * 2 - 1;
+      mouse.y = -(event.clientY / gl.domElement.clientHeight) * 2 + 1;
+      
+      // Update the picking ray with the camera and mouse position
+      raycaster.setFromCamera(mouse, camera);
+      
+      // Calculate objects intersecting the picking ray
+      const intersects = raycaster.intersectObjects(scene.children, true);
+      
+      if (intersects.length > 0) {
+        // Find the closest object that has userData.letterId
+        for (const intersect of intersects) {
+          let obj = intersect.object;
+          
+          // Traverse up to find an object with letterId
+          while (obj && !obj.userData.letterId) {
+            if (obj.parent) {
+              obj = obj.parent;
+            } else {
+              break;
+            }
+          }
+          
+          if (obj && obj.userData.letterId) {
+            // Create a laser beam from camera to hit point
+            const start = new THREE.Vector3(0, 0, 5).applyMatrix4(camera.matrixWorld);
+            onShoot({
+              id: obj.userData.letterId,
+              point: intersect.point,
+              start,
+            });
+            break;
+          }
+        }
+      } else {
+        // Shot missed all letters - provide feedback for missed shot
+        const start = new THREE.Vector3(0, 0, 5).applyMatrix4(camera.matrixWorld);
+        
+        // Get point far in the distance along ray direction
+        const direction = raycaster.ray.direction.clone();
+        const farPoint = new THREE.Vector3().addVectors(
+          start, 
+          direction.multiplyScalar(100)
+        );
+        
+        onShoot({
+          id: null,
+          point: farPoint,
+          start,
+        });
+      }
+    };
+    
+    gl.domElement.addEventListener('click', handleClick);
+    
+    return () => {
+      gl.domElement.removeEventListener('click', handleClick);
+    };
+  }, [camera, gl, mouse, onShoot, raycaster, scene.children]);
+  
+  return null;
+};
 
 // Star Letter component that appears as a shooting star with a comet trail
 interface LetterProps {
@@ -52,6 +293,7 @@ const StarLetter = React.memo(({ letter, onShoot }: LetterProps) => {
     }
   });
 
+  // When a letter is hit directly (not through raycasting)
   const handleClick = () => {
     if (isUnmountedRef.current) return;
     
@@ -118,6 +360,7 @@ const StarLetter = React.memo(({ letter, onShoot }: LetterProps) => {
       ref={groupRef}
       position={position}
       onClick={handleClick}
+      userData={{ letterId: id }} // Add letterId to userData for raycasting
     >
       {/* Comet Trail */}
       <mesh 
@@ -171,7 +414,7 @@ const StarLetter = React.memo(({ letter, onShoot }: LetterProps) => {
 StarLetter.displayName = 'StarLetter';
 
 // Low detail space environment for performance optimization
-const LowDetailSpaceEnvironment = () => {
+const LowDetailSpaceEnvironment: React.FC = () => {
   return (
     <>
       {/* Dark space background */}
@@ -195,7 +438,7 @@ const LowDetailSpaceEnvironment = () => {
 };
 
 // Full detail space environment
-const HighDetailSpaceEnvironment = () => {
+const HighDetailSpaceEnvironment: React.FC = () => {
   return (
     <>
       {/* Dark space background */}
@@ -254,10 +497,10 @@ const HighDetailSpaceEnvironment = () => {
 };
 
 // Adaptive space environment that checks device capabilities
-const AdaptiveSpaceEnvironment = () => {
+const AdaptiveSpaceEnvironment: React.FC = () => {
   // Use state to track if device is high-end or low-end
-  const [isHighPerformance, setIsHighPerformance] = useState(true);
-  const isUnmountedRef = useRef(false);
+  const [isHighPerformance, setIsHighPerformance] = useState<boolean>(true);
+  const isUnmountedRef = useRef<boolean>(false);
   
   useEffect(() => {
     // Setup unmounted flag
@@ -288,11 +531,11 @@ const AdaptiveSpaceEnvironment = () => {
 };
 
 // Crosshair component with space theme using Tailwind
-const SpaceCrosshair = () => {
-  const [mousePosition, setMousePosition] = React.useState({ x: 0, y: 0 });
-  const isUnmountedRef = useRef(false);
+const SpaceCrosshair: React.FC = () => {
+  const [mousePosition, setMousePosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const isUnmountedRef = useRef<boolean>(false);
   
-  React.useEffect(() => {
+  useEffect(() => {
     isUnmountedRef.current = false;
     
     const handleMouseMove = (event: MouseEvent) => {
@@ -335,7 +578,7 @@ const SpaceCrosshair = () => {
 };
 
 // Loading fallback for the 3D scene
-const SceneLoadingFallback = () => (
+const SceneLoadingFallback: React.FC = () => (
   <div className="fixed inset-0 flex items-center justify-center bg-gray-900 z-10">
     <div className="text-center">
       <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
@@ -351,14 +594,46 @@ interface GameCanvasProps {
   isGameOver: boolean; 
 }
 
+// Type for laser beam state object
+interface LaserBeam {
+  id: string;
+  start: THREE.Vector3;
+  end: THREE.Vector3;
+  color: string;
+  timestamp: number;
+}
+
+// Type for miss effect state object
+interface MissEffect {
+  id: string;
+  position: [number, number, number];
+  timestamp: number;
+}
+
 // Game canvas component that contains the 3D scene with space theme
-export default function GameCanvas({ letters, onShootLetter, isGameOver }: GameCanvasProps) {
+const GameCanvas: React.FC<GameCanvasProps> = ({ letters, onShootLetter, isGameOver }) => {
   // Track scene loading
-  const [isSceneLoaded, setIsSceneLoaded] = useState(false);
-  const isUnmountedRef = useRef(false);
+  const [isSceneLoaded, setIsSceneLoaded] = useState<boolean>(false);
+  const isUnmountedRef = useRef<boolean>(false);
+  
+  // State for visual effects
+  const [laserBeams, setLaserBeams] = useState<LaserBeam[]>([]);
+  const [missEffects, setMissEffects] = useState<MissEffect[]>([]);
+  const [playMissSound, setPlayMissSound] = useState<boolean>(false);
   
   // Memoize letters to prevent unnecessary re-renders
   const memoizedLetters = useMemo(() => letters, [letters]);
+  
+  // Clean up old effects
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now();
+      setLaserBeams(prev => prev.filter(beam => now - beam.timestamp < 300));
+      setMissEffects(prev => prev.filter(effect => now - effect.timestamp < 1000));
+    }, 100);
+    
+    return () => clearInterval(interval);
+  }, []);
   
   // Update the useEffect to conditionally set the cursor style
   useEffect(() => {
@@ -392,6 +667,50 @@ export default function GameCanvas({ letters, onShootLetter, isGameOver }: GameC
     };
   }, []);
   
+  // Enhanced shoot handler with visual feedback
+  const handleShoot = ({ 
+    id, 
+    point, 
+    start 
+  }: { 
+    id: string | null; 
+    point: THREE.Vector3; 
+    start: THREE.Vector3 
+  }) => {
+    if (isGameOver) return;
+    
+    // Add laser beam effect
+    const beam: LaserBeam = {
+      id: `beam-${Date.now()}`,
+      start,
+      end: new THREE.Vector3(point.x, point.y, point.z),
+      color: id ? '#4fc3f7' : '#ff5252', // Blue for potential hit, red for definite miss
+      timestamp: Date.now()
+    };
+    
+    setLaserBeams(prev => [...prev, beam]);
+    
+    if (id) {
+      // Attempt to shoot a letter
+      onShootLetter(id);
+    } else {
+      // Definitely missed all letters, show miss effect
+      const missPosition: [number, number, number] = [point.x, point.y, point.z];
+      setMissEffects(prev => [
+        ...prev, 
+        {
+          id: `miss-${Date.now()}`,
+          position: missPosition,
+          timestamp: Date.now()
+        }
+      ]);
+      
+      // Play miss sound
+      setPlayMissSound(true);
+      setTimeout(() => setPlayMissSound(false), 50);
+    }
+  };
+  
   return (
     <div className="fixed inset-0 w-full h-full z-0">
       {!isSceneLoaded && <SceneLoadingFallback />}
@@ -413,12 +732,38 @@ export default function GameCanvas({ letters, onShootLetter, isGameOver }: GameC
         <Suspense fallback={null}>
           <AdaptiveSpaceEnvironment />
           
+          {/* Add raycaster for better click detection */}
+          <Raycaster onShoot={handleShoot} />
+          
           {/* Render letters as shooting stars */}
           {memoizedLetters.map((letter) => (
             <StarLetter
               key={letter.id}
               letter={letter}
-              onShoot={onShootLetter}
+              onShoot={(id) => handleShoot({
+                id,
+                point: new THREE.Vector3(...letter.position),
+                start: new THREE.Vector3(0, 0, 10)
+              })}
+            />
+          ))}
+          
+          {/* Render all active laser beams */}
+          {laserBeams.map(beam => (
+            <LaserBeam 
+              key={beam.id}
+              start={beam.start}
+              end={beam.end}
+              color={beam.color}
+              duration={0.3}
+            />
+          ))}
+          
+          {/* Render all miss effects */}
+          {missEffects.map(effect => (
+            <MissEffect 
+              key={effect.id}
+              position={effect.position}
             />
           ))}
           
@@ -437,8 +782,13 @@ export default function GameCanvas({ letters, onShootLetter, isGameOver }: GameC
         </Suspense>
       </Canvas>
       
+      {/* Sound effect for missed shots */}
+      <MissedShotSound play={playMissSound} />
+      
       {/* Only show the crosshair when the game is not over */}
       {!isGameOver && <SpaceCrosshair />}
     </div>
   );
-}
+};
+
+export default GameCanvas;
