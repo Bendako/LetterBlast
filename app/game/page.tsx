@@ -18,11 +18,20 @@ export default function GamePage() {
   
   // Game over modal visibility
   const [showGameOver, setShowGameOver] = useState(false);
+  // Track if user manually closed the modal
+  const [manuallyClosedGameOver, setManuallyClosedGameOver] = useState(false);
   
   // Handle restart button
   const handleRestart = () => {
     restartGame();
     setShowGameOver(false);
+    setManuallyClosedGameOver(false);
+  };
+  
+  // Handle closing the game over modal
+  const handleCloseGameOver = () => {
+    setShowGameOver(false);
+    setManuallyClosedGameOver(true);
   };
   
   // Handle difficulty change
@@ -32,10 +41,17 @@ export default function GamePage() {
   
   // Show game over modal if game is over
   useEffect(() => {
-    if (gameState.isGameOver && !showGameOver) {
+    if (gameState.isGameOver && !showGameOver && !manuallyClosedGameOver) {
       setShowGameOver(true);
     }
-  }, [gameState.isGameOver, showGameOver]);
+  }, [gameState.isGameOver, showGameOver, manuallyClosedGameOver]);
+  
+  // Reset the manually closed state when game restarts
+  useEffect(() => {
+    if (!gameState.isGameOver) {
+      setManuallyClosedGameOver(false);
+    }
+  }, [gameState.isGameOver]);
   
   // Generate starry background for the entire game UI
   const StarryBackground = () => {
@@ -217,7 +233,7 @@ export default function GamePage() {
             
             <div className="flex justify-end space-x-4">
               <button 
-                onClick={() => setShowGameOver(false)} 
+                onClick={handleCloseGameOver} 
                 className="px-4 py-2 rounded-lg bg-gray-800 text-white border border-indigo-500/30"
               >
                 Close
