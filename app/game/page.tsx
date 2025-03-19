@@ -223,14 +223,6 @@ export default function GamePage() {
             </button>
           </div>
         </div>
-        
-        {/* Game Tip (Bottom Left) */}
-        <div className="absolute bottom-8 left-8 bg-gray-900/70 backdrop-blur-md p-3 rounded-lg max-w-xs border border-indigo-500/20 shadow-[0_0_15px_rgba(66,135,245,0.2)]">
-          <p className="text-sm text-blue-300">
-            <strong>Tip:</strong> Shoot the correct star letters in order to spell &quot;{gameState.targetWord}&quot;. 
-            Drag to rotate the galaxy view. Scroll to zoom.
-          </p>
-        </div>
       </div>
       
       {/* Game Over Modal */}
