@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   GameState,
   GameDifficulty,
@@ -15,9 +15,12 @@ export const useGameState = (initialDifficulty: GameDifficulty = 'easy') => {
   const [isPaused, setIsPaused] = useState<boolean>(false);
   const lastUpdateTimeRef = useRef<number>(performance.now());
   const requestIdRef = useRef<number | null>(null);
+  const isUnmountedRef = useRef<boolean>(false);
 
   // Animation loop for game physics
-  const tick = (time: number) => {
+  const tick = useCallback((time: number) => {
+    if (isUnmountedRef.current) return;
+    
     if (isPaused) {
       lastUpdateTimeRef.current = time;
       requestIdRef.current = requestAnimationFrame(tick);
@@ -30,38 +33,55 @@ export const useGameState = (initialDifficulty: GameDifficulty = 'easy') => {
     setGameState(currentState => updateGameState(currentState, deltaTime));
     
     requestIdRef.current = requestAnimationFrame(tick);
-  };
+  }, [isPaused]);
 
-  // Start the game loop
+  // Clean up function to ensure all animations are stopped
+  const cleanupGameLoop = useCallback(() => {
+    if (requestIdRef.current !== null) {
+      cancelAnimationFrame(requestIdRef.current);
+      requestIdRef.current = null;
+    }
+    
+    // Force cleanup of any other potentially running animation frames
+    for (let i = 1; i < 1000; i++) {
+      cancelAnimationFrame(i);
+    }
+  }, []);
+
+  // Start the game loop with proper cleanup
   useEffect(() => {
+    isUnmountedRef.current = false;
     requestIdRef.current = requestAnimationFrame(tick);
     
     return () => {
-      if (requestIdRef.current !== null) {
-        cancelAnimationFrame(requestIdRef.current);
-      }
+      isUnmountedRef.current = true;
+      cleanupGameLoop();
     };
-  }, [isPaused]);
+  }, [tick, cleanupGameLoop]);
 
   // Handle shooting a letter
-  const shootLetter = (letterId: string) => {
+  const shootLetter = useCallback((letterId: string) => {
+    if (isUnmountedRef.current) return;
     setGameState(currentState => handleLetterShot(currentState, letterId));
-  };
+  }, []);
 
   // Reset the game
-  const restartGame = (difficulty: GameDifficulty = initialDifficulty) => {
+  const restartGame = useCallback((difficulty: GameDifficulty = initialDifficulty) => {
+    if (isUnmountedRef.current) return;
     setGameState(resetGame(difficulty));
-  };
+  }, [initialDifficulty]);
 
   // Toggle pause state
-  const togglePause = () => {
+  const togglePause = useCallback(() => {
+    if (isUnmountedRef.current) return;
     setIsPaused(current => !current);
-  };
+  }, []);
 
   // Change difficulty
-  const changeDifficulty = (difficulty: GameDifficulty) => {
+  const changeDifficulty = useCallback((difficulty: GameDifficulty) => {
+    if (isUnmountedRef.current) return;
     restartGame(difficulty);
-  };
+  }, [restartGame]);
 
   return {
     gameState,
@@ -70,5 +90,6 @@ export const useGameState = (initialDifficulty: GameDifficulty = 'easy') => {
     restartGame,
     togglePause,
     changeDifficulty,
+    cleanupGameLoop,
   };
 };

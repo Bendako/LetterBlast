@@ -18,20 +18,11 @@ export default function GamePage() {
   
   // Game over modal visibility
   const [showGameOver, setShowGameOver] = useState(false);
-  // Track if user manually closed the modal
-  const [manuallyClosedGameOver, setManuallyClosedGameOver] = useState(false);
   
   // Handle restart button
   const handleRestart = () => {
     restartGame();
     setShowGameOver(false);
-    setManuallyClosedGameOver(false);
-  };
-  
-  // Handle closing the game over modal
-  const handleCloseGameOver = () => {
-    setShowGameOver(false);
-    setManuallyClosedGameOver(true);
   };
   
   // Handle difficulty change
@@ -41,17 +32,10 @@ export default function GamePage() {
   
   // Show game over modal if game is over
   useEffect(() => {
-    if (gameState.isGameOver && !showGameOver && !manuallyClosedGameOver) {
+    if (gameState.isGameOver && !showGameOver) {
       setShowGameOver(true);
     }
-  }, [gameState.isGameOver, showGameOver, manuallyClosedGameOver]);
-  
-  // Reset the manually closed state when game restarts
-  useEffect(() => {
-    if (!gameState.isGameOver) {
-      setManuallyClosedGameOver(false);
-    }
-  }, [gameState.isGameOver]);
+  }, [gameState.isGameOver, showGameOver]);
   
   // Generate starry background for the entire game UI
   const StarryBackground = () => {
@@ -232,12 +216,22 @@ export default function GamePage() {
             </p>
             
             <div className="flex justify-end space-x-4">
-              <button 
-                onClick={handleCloseGameOver} 
-                className="px-4 py-2 rounded-lg bg-gray-800 text-white border border-indigo-500/30"
+              <Link href="/" 
+                onClick={() => {
+                  // Force immediate cancelation of all game loops and animations
+                  if (window.cancelAnimationFrame) {
+                    for (let i = 1; i < 1000; i++) {
+                      window.cancelAnimationFrame(i);
+                    }
+                  }
+                }}
               >
-                Close
-              </button>
+                <button 
+                  className="px-4 py-2 rounded-lg bg-gray-800 text-white border border-indigo-500/30"
+                >
+                  Close
+                </button>
+              </Link>
               <button 
                 onClick={handleRestart}
                 className="px-4 py-2 rounded-lg text-white transition-all duration-300 bg-gradient-to-r from-indigo-700 to-blue-600 shadow-lg hover:shadow-[0_0_15px_rgba(66,135,245,0.5)] hover:from-indigo-800 hover:to-blue-700"
