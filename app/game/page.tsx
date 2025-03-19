@@ -13,7 +13,8 @@ export default function GamePage() {
     shootLetter, 
     restartGame, 
     togglePause, 
-    changeDifficulty 
+    changeDifficulty,
+    cleanupGameLoop 
   } = useGameState('easy');
   
   // Game over modal visibility
@@ -127,7 +128,18 @@ export default function GamePage() {
               >
                 {isPaused ? "Resume" : "Pause"}
               </button>
-              <Link href="/">
+              <Link href="/"
+                onClick={() => {
+                  // Force immediate cancelation of all game loops and animations
+                  if (window.cancelAnimationFrame) {
+                    for (let i = 1; i < 1000; i++) {
+                      window.cancelAnimationFrame(i);
+                    }
+                  }
+                  // Use the cleanup function from the game state hook
+                  cleanupGameLoop();
+                }}
+              >
                 <button className="px-4 py-2 rounded-lg bg-gray-800 text-white border border-indigo-500/30">
                   Exit
                 </button>
