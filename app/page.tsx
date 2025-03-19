@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -21,12 +21,81 @@ import {
   Sparkles
 } from 'lucide-react';
 
+// Lazy load animation-heavy components
+const LazyAnimatedLetters = React.lazy(() => 
+  Promise.resolve({
+    default: ({ letters }: { letters: string }) => (
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10">
+        {Array.from({ length: 20 }).map((_, index) => (
+          <motion.div
+            key={index}
+            initial={{ 
+              x: Math.random() * 100 - 50 + "%", 
+              y: -100, 
+              opacity: 0.3,
+              rotate: Math.random() * 180 - 90
+            }}
+            animate={{ 
+              y: "120vh",
+              opacity: [0.3, 0.8, 0.3],
+              rotate: Math.random() * 360 - 180
+            }}
+            transition={{ 
+              duration: Math.random() * 20 + 10, 
+              repeat: Infinity,
+              ease: "linear",
+              delay: Math.random() * 5
+            }}
+            className={`absolute text-4xl md:text-6xl font-bold text-blue-500/10 select-none pointer-events-none`}
+          >
+            {letters[Math.floor(Math.random() * letters.length)]}
+          </motion.div>
+        ))}
+      </div>
+    )
+  })
+);
+
+// Loading component when animations are loading
+const LoadingIndicator = () => (
+  <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-b from-gray-950 to-blue-950 z-50">
+    <div className="text-center">
+      <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+      <p className="text-white text-xl">Loading LetterBlast...</p>
+    </div>
+  </div>
+);
+
 export default function Home() {
   const { t, language, toggleLanguage } = useLanguage();
   const [isLoaded, setIsLoaded] = useState(false);
+  const [showAnimations, setShowAnimations] = useState(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const unmountedRef = useRef(false);
 
   useEffect(() => {
-    setIsLoaded(true);
+    unmountedRef.current = false;
+    
+    // Stage 1: Indicate basic rendering is complete
+    timeoutRef.current = setTimeout(() => {
+      if (!unmountedRef.current) {
+        setIsLoaded(true);
+      }
+    }, 200);
+    
+    // Stage 2: Only start animations after a short delay to prevent stuttering
+    timeoutRef.current = setTimeout(() => {
+      if (!unmountedRef.current) {
+        setShowAnimations(true);
+      }
+    }, 600);
+    
+    return () => {
+      unmountedRef.current = true;
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
   }, []);
 
   // Update progress data for the development phases
@@ -100,6 +169,10 @@ export default function Home() {
   // Animated letters for the hero section
   const letters = "LETTERBLAST";
 
+  if (!isLoaded) {
+    return <LoadingIndicator />;
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-950 to-blue-950 text-white overflow-hidden">
       {/* Navbar */}
@@ -155,34 +228,12 @@ export default function Home() {
               transition={{ duration: 1 }}
               className="max-w-7xl mx-auto px-6 relative"
             >
-              {/* 3D Animated Letters */}
-              <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10">
-                {Array.from({ length: 20 }).map((_, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ 
-                      x: Math.random() * 100 - 50 + "%", 
-                      y: -100, 
-                      opacity: 0.3,
-                      rotate: Math.random() * 180 - 90
-                    }}
-                    animate={{ 
-                      y: "120vh",
-                      opacity: [0.3, 0.8, 0.3],
-                      rotate: Math.random() * 360 - 180
-                    }}
-                    transition={{ 
-                      duration: Math.random() * 20 + 10, 
-                      repeat: Infinity,
-                      ease: "linear",
-                      delay: Math.random() * 5
-                    }}
-                    className={`absolute text-4xl md:text-6xl font-bold text-blue-500/10 select-none pointer-events-none`}
-                  >
-                    {letters[Math.floor(Math.random() * letters.length)]}
-                  </motion.div>
-                ))}
-              </div>
+              {/* 3D Animated Letters - Lazy loaded */}
+              {showAnimations && (
+                <React.Suspense fallback={null}>
+                  <LazyAnimatedLetters letters={letters} />
+                </React.Suspense>
+              )}
 
               {/* Hero Content */}
               <div className="relative z-10 text-center flex flex-col items-center">
@@ -235,21 +286,23 @@ export default function Home() {
                   </Link>
                 </motion.div>
 
-                {/* Scroll Indicator */}
-                <motion.div 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1, y: [0, 10, 0] }}
-                  transition={{ 
-                    opacity: { delay: 1.5, duration: 1 },
-                    y: { repeat: Infinity, duration: 1.5, ease: "easeInOut" }
-                  }}
-                  className="absolute bottom-[-100px] left-1/2 transform -translate-x-1/2"
-                >
-                  <div className="flex flex-col items-center">
-                    <div className="text-gray-400 text-sm mb-2">Scroll Down</div>
-                    <div className="w-[2px] h-8 bg-gradient-to-b from-blue-500 to-transparent"></div>
-                  </div>
-                </motion.div>
+                {/* Scroll Indicator - only show when animations are enabled */}
+                {showAnimations && (
+                  <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1, y: [0, 10, 0] }}
+                    transition={{ 
+                      opacity: { delay: 1.5, duration: 1 },
+                      y: { repeat: Infinity, duration: 1.5, ease: "easeInOut" }
+                    }}
+                    className="absolute bottom-[-100px] left-1/2 transform -translate-x-1/2"
+                  >
+                    <div className="flex flex-col items-center">
+                      <div className="text-gray-400 text-sm mb-2">Scroll Down</div>
+                      <div className="w-[2px] h-8 bg-gradient-to-b from-blue-500 to-transparent"></div>
+                    </div>
+                  </motion.div>
+                )}
               </div>
             </motion.div>
           )}

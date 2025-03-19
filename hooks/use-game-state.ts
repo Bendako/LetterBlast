@@ -16,6 +16,7 @@ export const useGameState = (initialDifficulty: GameDifficulty = 'easy') => {
   const lastUpdateTimeRef = useRef<number>(performance.now());
   const requestIdRef = useRef<number | null>(null);
   const isUnmountedRef = useRef<boolean>(false);
+  const activeTimeoutsRef = useRef<number[]>([]);
 
   // Animation loop for game physics
   const tick = useCallback((time: number) => {
@@ -35,17 +36,35 @@ export const useGameState = (initialDifficulty: GameDifficulty = 'easy') => {
     requestIdRef.current = requestAnimationFrame(tick);
   }, [isPaused]);
 
-  // Clean up function to ensure all animations are stopped
+  // Improved cleanup function that focuses only on game components
   const cleanupGameLoop = useCallback(() => {
+    // Signal that component is unmounting to prevent further updates
+    isUnmountedRef.current = true;
+    
+    // Cancel our specific animation frame
     if (requestIdRef.current !== null) {
       cancelAnimationFrame(requestIdRef.current);
       requestIdRef.current = null;
     }
     
-    // Force cleanup of any other potentially running animation frames
-    for (let i = 1; i < 1000; i++) {
-      cancelAnimationFrame(i);
-    }
+    // Clean up any timeouts that were registered by this component
+    activeTimeoutsRef.current.forEach(id => {
+      clearTimeout(id);
+    });
+    activeTimeoutsRef.current = [];
+  }, []);
+
+  // A safer setTimeout that tracks IDs
+  const safeSetTimeout = useCallback((callback: () => void, delay: number): number => {
+    const timeoutId = window.setTimeout(() => {
+      // Remove this ID from our tracking array when it executes
+      activeTimeoutsRef.current = activeTimeoutsRef.current.filter(id => id !== timeoutId);
+      callback();
+    }, delay);
+    
+    // Track this timeout ID
+    activeTimeoutsRef.current.push(timeoutId);
+    return timeoutId;
   }, []);
 
   // Start the game loop with proper cleanup
@@ -54,7 +73,6 @@ export const useGameState = (initialDifficulty: GameDifficulty = 'easy') => {
     requestIdRef.current = requestAnimationFrame(tick);
     
     return () => {
-      isUnmountedRef.current = true;
       cleanupGameLoop();
     };
   }, [tick, cleanupGameLoop]);
@@ -91,5 +109,6 @@ export const useGameState = (initialDifficulty: GameDifficulty = 'easy') => {
     togglePause,
     changeDifficulty,
     cleanupGameLoop,
+    safeSetTimeout,
   };
 };

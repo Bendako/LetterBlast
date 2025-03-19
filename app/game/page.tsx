@@ -38,6 +38,14 @@ export default function GamePage() {
     }
   }, [gameState.isGameOver, showGameOver]);
   
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      // Ensure cursor is reset when component unmounts
+      document.body.style.cursor = 'auto';
+    };
+  }, []);
+  
   // Generate starry background for the entire game UI
   const StarryBackground = () => {
     return (
@@ -64,6 +72,14 @@ export default function GamePage() {
         })}
       </div>
     );
+  };
+  
+  // Clear pending timeouts
+  const clearPendingTimeouts = () => {
+    const highestId = window.setTimeout(() => {}, 0);
+    for (let i = highestId; i >= 0; i--) {
+      window.clearTimeout(i);
+    }
   };
   
   return (
@@ -128,19 +144,20 @@ export default function GamePage() {
               >
                 {isPaused ? "Resume" : "Pause"}
               </button>
-              <Link href="/"
-                onClick={() => {
-                  // Force immediate cancelation of all game loops and animations
-                  if (window.cancelAnimationFrame) {
-                    for (let i = 1; i < 1000; i++) {
-                      window.cancelAnimationFrame(i);
-                    }
-                  }
-                  // Use the cleanup function from the game state hook
-                  cleanupGameLoop();
-                }}
-              >
-                <button className="px-4 py-2 rounded-lg bg-gray-800 text-white border border-indigo-500/30">
+              <Link href="/">
+                <button 
+                  className="px-4 py-2 rounded-lg bg-gray-800 text-white border border-indigo-500/30"
+                  onClick={() => {
+                    // Only clean up game-specific animations
+                    cleanupGameLoop();
+                    
+                    // Reset cursor style before navigation
+                    document.body.style.cursor = 'auto';
+                    
+                    // Clear any running timeouts
+                    clearPendingTimeouts();
+                  }}
+                >
                   Exit
                 </button>
               </Link>
@@ -228,18 +245,15 @@ export default function GamePage() {
             </p>
             
             <div className="flex justify-end space-x-4">
-              <Link href="/" 
-                onClick={() => {
-                  // Force immediate cancelation of all game loops and animations
-                  if (window.cancelAnimationFrame) {
-                    for (let i = 1; i < 1000; i++) {
-                      window.cancelAnimationFrame(i);
-                    }
-                  }
-                }}
-              >
+              <Link href="/">
                 <button 
                   className="px-4 py-2 rounded-lg bg-gray-800 text-white border border-indigo-500/30"
+                  onClick={() => {
+                    // Clean up before navigation
+                    cleanupGameLoop();
+                    document.body.style.cursor = 'auto';
+                    clearPendingTimeouts();
+                  }}
                 >
                   Close
                 </button>

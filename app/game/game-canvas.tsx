@@ -25,9 +25,19 @@ const StarLetter = React.memo(({ letter, onShoot }: LetterProps) => {
   // References for animation
   const groupRef = useRef<THREE.Group>(null);
   const trailRef = useRef<THREE.Mesh>(null);
+  const isUnmountedRef = useRef(false);
+  
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      isUnmountedRef.current = true;
+    };
+  }, []);
   
   // Animate the letter to follow its velocity direction
   useFrame(() => {
+    if (isUnmountedRef.current) return;
+    
     if (groupRef.current && !active && !exploded) {
       // Calculate rotation based on velocity to point in movement direction
       const [vx, vy] = letter.velocity;
@@ -43,6 +53,8 @@ const StarLetter = React.memo(({ letter, onShoot }: LetterProps) => {
   });
 
   const handleClick = () => {
+    if (isUnmountedRef.current) return;
+    
     if (!active && !exploded) {
       // Trigger explosion effects
       setExploded(true);
@@ -58,7 +70,16 @@ const StarLetter = React.memo(({ letter, onShoot }: LetterProps) => {
       }
       
       // Hide flash after a short time
-      setTimeout(() => setShowFlash(false), 100);
+      const flashTimeout = setTimeout(() => {
+        if (!isUnmountedRef.current) {
+          setShowFlash(false);
+        }
+      }, 100);
+      
+      // Clean up timeout if component unmounts
+      return () => {
+        clearTimeout(flashTimeout);
+      };
     }
   };
 
@@ -236,8 +257,12 @@ const HighDetailSpaceEnvironment = () => {
 const AdaptiveSpaceEnvironment = () => {
   // Use state to track if device is high-end or low-end
   const [isHighPerformance, setIsHighPerformance] = useState(true);
+  const isUnmountedRef = useRef(false);
   
   useEffect(() => {
+    // Setup unmounted flag
+    isUnmountedRef.current = false;
+    
     // Check device performance
     const checkPerformance = () => {
       // Simple check based on device pixel ratio and supported features
@@ -246,10 +271,17 @@ const AdaptiveSpaceEnvironment = () => {
         navigator.hardwareConcurrency < 4 || 
         /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
       
-      setIsHighPerformance(!isLowEnd);
+      if (!isUnmountedRef.current) {
+        setIsHighPerformance(!isLowEnd);
+      }
     };
     
     checkPerformance();
+    
+    // Clean up
+    return () => {
+      isUnmountedRef.current = true;
+    };
   }, []);
   
   return isHighPerformance ? <HighDetailSpaceEnvironment /> : <LowDetailSpaceEnvironment />;
@@ -258,15 +290,21 @@ const AdaptiveSpaceEnvironment = () => {
 // Crosshair component with space theme using Tailwind
 const SpaceCrosshair = () => {
   const [mousePosition, setMousePosition] = React.useState({ x: 0, y: 0 });
+  const isUnmountedRef = useRef(false);
   
   React.useEffect(() => {
+    isUnmountedRef.current = false;
+    
     const handleMouseMove = (event: MouseEvent) => {
-      setMousePosition({ x: event.clientX, y: event.clientY });
+      if (!isUnmountedRef.current) {
+        setMousePosition({ x: event.clientX, y: event.clientY });
+      }
     };
     
     window.addEventListener('mousemove', handleMouseMove);
     
     return () => {
+      isUnmountedRef.current = true;
       window.removeEventListener('mousemove', handleMouseMove);
     };
   }, []);
@@ -317,12 +355,15 @@ interface GameCanvasProps {
 export default function GameCanvas({ letters, onShootLetter, isGameOver }: GameCanvasProps) {
   // Track scene loading
   const [isSceneLoaded, setIsSceneLoaded] = useState(false);
+  const isUnmountedRef = useRef(false);
   
   // Memoize letters to prevent unnecessary re-renders
   const memoizedLetters = useMemo(() => letters, [letters]);
   
   // Update the useEffect to conditionally set the cursor style
   useEffect(() => {
+    isUnmountedRef.current = false;
+    
     // Only hide the cursor if the game is not over
     if (!isGameOver) {
       document.body.style.cursor = 'none';
@@ -331,17 +372,24 @@ export default function GameCanvas({ letters, onShootLetter, isGameOver }: GameC
     }
     
     return () => {
+      isUnmountedRef.current = true;
       document.body.style.cursor = 'auto';
     };
   }, [isGameOver]); 
   
-  // Handle scene load complete
+  // Handle scene load complete with cleanup for timeouts
   useEffect(() => {
+    if (isUnmountedRef.current) return;
+    
     const timer = setTimeout(() => {
-      setIsSceneLoaded(true);
+      if (!isUnmountedRef.current) {
+        setIsSceneLoaded(true);
+      }
     }, 1000);
     
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+    };
   }, []);
   
   return (

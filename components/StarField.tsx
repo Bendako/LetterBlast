@@ -21,22 +21,28 @@ export default function StarField({
 }: StarFieldProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const starsRef = useRef<{x: number, y: number, size: number, speed: number}[]>([]);
+  const animationRef = useRef<number | null>(null);
+  const isUnmountedRef = useRef(false);
   
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     
+    isUnmountedRef.current = false;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     
     // Set canvas to full screen
     const setCanvasSize = () => {
+      if (isUnmountedRef.current || !canvas) return;
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
     };
     
     // Initialize stars
     const initStars = () => {
+      if (isUnmountedRef.current || !canvas) return;
+      
       starsRef.current = [];
       for (let i = 0; i < starsCount; i++) {
         starsRef.current.push({
@@ -50,6 +56,8 @@ export default function StarField({
     
     // Update stars positions
     const updateStars = () => {
+      if (isUnmountedRef.current || !canvas) return;
+      
       starsRef.current.forEach(star => {
         star.y += star.speed;
         
@@ -63,6 +71,8 @@ export default function StarField({
     
     // Draw stars on canvas
     const drawStars = () => {
+      if (isUnmountedRef.current || !canvas || !ctx) return;
+      
       // Clear canvas
       ctx.fillStyle = backgroundColor;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -85,27 +95,46 @@ export default function StarField({
       });
     };
     
-    // Animation loop
+    // Animation loop with proper cleanup
     const animate = () => {
+      if (isUnmountedRef.current) return;
+      
       updateStars();
       drawStars();
-      requestAnimationFrame(animate);
+      animationRef.current = requestAnimationFrame(animate);
     };
     
-    // Handle window resize
-    window.addEventListener('resize', () => {
-      setCanvasSize();
-      initStars();
-    });
+    // Handle window resize with debounce for performance
+    let resizeTimeout: number;
+    const handleResize = () => {
+      if (isUnmountedRef.current) return;
+      
+      clearTimeout(resizeTimeout);
+      resizeTimeout = window.setTimeout(() => {
+        if (!isUnmountedRef.current) {
+          setCanvasSize();
+          initStars();
+        }
+      }, 100);
+    };
+    
+    window.addEventListener('resize', handleResize);
     
     // Initialize
     setCanvasSize();
     initStars();
-    animate();
+    animationRef.current = requestAnimationFrame(animate);
     
-    // Cleanup
+    // Comprehensive cleanup
     return () => {
-      window.removeEventListener('resize', setCanvasSize);
+      isUnmountedRef.current = true;
+      window.removeEventListener('resize', handleResize);
+      clearTimeout(resizeTimeout);
+      
+      if (animationRef.current !== null) {
+        cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
+      }
     };
   }, [starsCount, speed, backgroundColor]);
   

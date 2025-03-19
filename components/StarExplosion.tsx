@@ -22,9 +22,20 @@ interface StarExplosionProps {
 export default function StarExplosion({ position, color }: StarExplosionProps) {
   const [particles, setParticles] = useState<Particle[]>([]);
   const groupRef = useRef<THREE.Group>(null);
+  const isUnmountedRef = useRef(false);
+  
+  // Proper cleanup when component unmounts
+  useEffect(() => {
+    isUnmountedRef.current = false;
+    return () => {
+      isUnmountedRef.current = true;
+    };
+  }, []);
   
   // Initialize explosion particles
   useEffect(() => {
+    if (isUnmountedRef.current) return;
+    
     const newParticles: Particle[] = [];
     const particleCount = 15;
     
@@ -46,12 +57,14 @@ export default function StarExplosion({ position, color }: StarExplosionProps) {
       });
     }
     
-    setParticles(newParticles);
+    if (!isUnmountedRef.current) {
+      setParticles(newParticles);
+    }
   }, [color]);
   
   // Animate particles
   useFrame((_, delta) => {
-    if (!particles.length) return;
+    if (isUnmountedRef.current || !particles.length) return;
     
     setParticles(prevParticles => 
       prevParticles
