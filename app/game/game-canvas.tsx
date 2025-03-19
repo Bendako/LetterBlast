@@ -251,18 +251,24 @@ const SpaceCrosshair = () => {
 interface GameCanvasProps {
   letters: LetterType[];
   onShootLetter: (id: string) => void;
+  isGameOver: boolean; // Added new prop
 }
 
 // Game canvas component that contains the 3D scene with space theme
-export default function GameCanvas({ letters, onShootLetter }: GameCanvasProps) {
-  // Hide the default cursor
+export default function GameCanvas({ letters, onShootLetter, isGameOver }: GameCanvasProps) {
+  // Update the useEffect to conditionally set the cursor style
   React.useEffect(() => {
-    document.body.style.cursor = 'none';
+    // Only hide the cursor if the game is not over
+    if (!isGameOver) {
+      document.body.style.cursor = 'none';
+    } else {
+      document.body.style.cursor = 'auto';
+    }
     
     return () => {
       document.body.style.cursor = 'auto';
     };
-  }, []);
+  }, [isGameOver]); // Add isGameOver to the dependency array
   
   const handleCanvasClick = () => {
     // Just for cursor visuals - shooting is handled in the StarLetter component
@@ -300,8 +306,8 @@ export default function GameCanvas({ letters, onShootLetter }: GameCanvasProps) 
         />
       </Canvas>
       
-      {/* Space-themed crosshair */}
-      <SpaceCrosshair />
+      {/* Only show the crosshair when the game is not over */}
+      {!isGameOver && <SpaceCrosshair />}
     </div>
   );
 }

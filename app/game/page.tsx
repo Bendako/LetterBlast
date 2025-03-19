@@ -82,7 +82,8 @@ export default function GamePage() {
       {/* Main Game Canvas (Full Screen) */}
       <GameCanvas 
         letters={gameState.letters} 
-        onShootLetter={shootLetter} 
+        onShootLetter={shootLetter}
+        isGameOver={gameState.isGameOver || showGameOver} // Pass the game over state
       />
       
       {/* Game HUD Overlay */}

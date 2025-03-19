@@ -2,6 +2,11 @@
 
 import { useEffect } from 'react';
 
+// Add proper type declaration for webkitAudioContext
+interface Window {
+  webkitAudioContext: typeof AudioContext;
+}
+
 interface ExplosionSoundProps {
   play: boolean;
 }
@@ -10,14 +15,15 @@ export default function ExplosionSound({ play }: ExplosionSoundProps) {
   useEffect(() => {
     if (play) {
       try {
-        // Create the explosion sound
-        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        // Create the explosion sound with proper typing
+        const AudioContextClass = window.AudioContext || 
+          ((window as unknown as Window).webkitAudioContext);
+        const audioContext = new AudioContextClass();
         
-        // Create oscillator for the explosion sound
+        // Configure sound
         const oscillator = audioContext.createOscillator();
         const gainNode = audioContext.createGain();
         
-        // Configure sound
         oscillator.type = 'sine';
         oscillator.frequency.setValueAtTime(300, audioContext.currentTime);
         oscillator.frequency.exponentialRampToValueAtTime(50, audioContext.currentTime + 0.3);
