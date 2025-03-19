@@ -1,4 +1,4 @@
-// Game engine for LetterBlast
+// Game engine for SpaceLetters
 // Handles core game mechanics, letter generation, scoring, etc.
 
 export type GameDifficulty = 'easy' | 'medium' | 'hard';
@@ -25,40 +25,65 @@ export type GameState = {
 
 // Word lists for different difficulty levels
 const wordLists = {
-  easy: ['CAT', 'DOG', 'HAT', 'SUN', 'MAP', 'BOOK', 'FISH', 'BALL'],
-  medium: ['APPLE', 'HOUSE', 'CHAIR', 'TABLE', 'SMILE', 'LEARN', 'WRITE'],
-  hard: ['PYTHON', 'LIBRARY', 'PROGRAM', 'COMPLEX', 'BALANCE', 'QUALITY'],
+  easy: ['STAR', 'MOON', 'SUN', 'MARS', 'GLOW', 'BEAM', 'RISE', 'RAYS'],
+  medium: ['COMET', 'ORBIT', 'SOLAR', 'LUNAR', 'SPACE', 'PLANET', 'COSMIC'],
+  hard: ['GALAXY', 'NEBULA', 'QUASAR', 'PULSAR', 'METEOR', 'ECLIPSE', 'STELLAR'],
 };
 
-// Generate a random color in hex format
+// Generate a random color in hex format with space theme
 const getRandomColor = (): string => {
   const colors = [
-    '#ff9900', '#00aaff', '#ff00aa', '#00ffaa', 
-    '#aa00ff', '#ffaa00', '#00ffff', '#ff00ff'
+    '#5E97F6', // Blue
+    '#C6A4F8', // Purple
+    '#FF9E80', // Orange
+    '#4DB6AC', // Teal
+    '#FF8A80', // Pink/Red
+    '#FFD54F', // Yellow
+    '#81C784', // Green
+    '#9FA8DA'  // Lavender
   ];
   return colors[Math.floor(Math.random() * colors.length)];
 };
 
-// Generate a position for a letter - constrained to a 2D plane in front of the player
-const getRandomPosition = (spread: number = 8): [number, number, number] => {
-  // Fixed z coordinate to place all letters on the same plane
-  const fixedDistance = -15; // Fixed distance in front of player
+// Generate a position for a shooting star letter
+const getRandomPosition = (spread: number = 15): [number, number, number] => {
+  // Position stars further away and to the sides/top so they can streak across
+  const side = Math.random() > 0.5 ? 1 : -1; // Left or right side
+  const vertical = Math.random() > 0.5;      // From top or from sides
   
-  return [
-    (Math.random() - 0.5) * spread * 2,     // x: wide horizontal spread
-    (Math.random() - 0.5) * 4,              // y: limited vertical spread
-    fixedDistance                           // z: fixed distance for all letters
-  ];
+  if (vertical) {
+    // Come from top
+    return [
+      (Math.random() - 0.5) * spread,        // x: Horizontal position along top
+      spread / 2 + Math.random() * 5,        // y: Above the view
+      -15 - Math.random() * 10              // z: Distant depth
+    ];
+  } else {
+    // Come from sides
+    return [
+      side * (spread / 2 + Math.random() * 5),  // x: Far to the left or right
+      (Math.random() - 0.5) * spread,          // y: Vertical position along side
+      -15 - Math.random() * 10                 // z: Distant depth
+    ];
+  }
 };
 
-// Generate velocity that primarily moves horizontally
+// Generate velocity with a diagonal trajectory like shooting stars
 const getRandomVelocity = (speed: number = 0.01): [number, number, number] => {
-  const direction = Math.random() > 0.5 ? 1 : -1; // Random left or right
+  // Determine direction based on starting position
+  // If position is top, move down+left or down+right
+  // If position is sides, move diagonally toward center
+  
+  const xDirection = Math.random() > 0.5 ? 1 : -1;
+  const speedMultiplier = 
+    speed === 0.005 ? 1 :    // easy
+    speed === 0.01 ? 1.5 :   // medium
+    2;                      // hard
   
   return [
-    direction * (0.5 + Math.random() * 0.5) * speed * 3, // x: stronger horizontal movement
-    0,                                                   // y: no vertical movement
-    0                                                    // z: no depth movement
+    xDirection * (0.5 + Math.random() * 0.5) * speed * 8 * speedMultiplier,  // x: stronger horizontal movement
+    -(0.3 + Math.random() * 0.5) * speed * 8 * speedMultiplier,              // y: downward movement
+    0.1 * speed * speedMultiplier                                           // z: slight forward movement
   ];
 };
 
@@ -151,6 +176,8 @@ export const updateGameState = (state: GameState, deltaTime: number): GameState 
   
   // Update letter positions based on their velocities
   const updatedLetters = state.letters.map(letter => {
+    if (letter.active) return letter;
+    
     const [x, y, z] = letter.position;
     const [vx, vy, vz] = letter.velocity;
     
@@ -161,22 +188,32 @@ export const updateGameState = (state: GameState, deltaTime: number): GameState 
       z + vz * deltaTime * 60,
     ];
     
-    // Bounce if hitting the horizontal boundaries
-    const horizontalBoundary = 10;
-    const newVelocity = [...letter.velocity] as [number, number, number];
+    // Check if letter has moved out of bounds
+    const outOfBounds = 
+      Math.abs(newPosition[0]) > 20 || // Too far left/right
+      newPosition[1] < -15 ||          // Too far down
+      newPosition[2] > 5;              // Too close to camera
     
-    if (Math.abs(newPosition[0]) > horizontalBoundary) {
-      newVelocity[0] *= -1; // Reverse direction when hitting side boundaries
+    // If out of bounds, reset position (create a new shooting star from outside)
+    if (outOfBounds) {
+      const newPos = getRandomPosition();
+      const newVel = getRandomVelocity(
+        state.difficulty === 'easy' ? 0.005 : 
+        state.difficulty === 'medium' ? 0.01 : 
+        0.015
+      );
+      
+      return {
+        ...letter,
+        position: newPos,
+        velocity: newVel,
+        color: getRandomColor(), // New color for variety
+      };
     }
     
     return {
       ...letter,
-      position: [
-        Math.max(-horizontalBoundary, Math.min(horizontalBoundary, newPosition[0])),
-        newPosition[1],
-        newPosition[2]
-      ] as [number, number, number],
-      velocity: newVelocity,
+      position: newPosition as [number, number, number],
     };
   });
   

@@ -1,173 +1,222 @@
 "use client";
 
-import React from 'react';
-import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Text, Billboard } from '@react-three/drei';
+import React, { useState, useRef } from 'react';
+import { Canvas, useFrame } from '@react-three/fiber';
+import { OrbitControls, Text, Billboard, Stars } from '@react-three/drei';
 import { Letter as LetterType } from '@/lib/game-engine';
+import * as THREE from 'three';
+import StarExplosion from '@/components/StarExplosion';
+import ExplosionSound from '@/components/ExplosionSound';
 
-// A component for a floating letter in 3D space
+// Star Letter component that appears as a shooting star with a comet trail
 interface LetterProps {
   letter: LetterType;
   onShoot: (id: string) => void;
 }
 
-const Letter = ({ letter, onShoot }: LetterProps) => {
+const StarLetter = ({ letter, onShoot }: LetterProps) => {
   const { id, character, position, color, active } = letter;
+  
+  // State for explosion effects
+  const [exploded, setExploded] = useState(false);
+  const [showFlash, setShowFlash] = useState(false);
+  const [playSound, setPlaySound] = useState(false);
+  
+  // References for animation
+  const groupRef = useRef<THREE.Group>(null);
+  const trailRef = useRef<THREE.Mesh>(null);
+  
+  // Animate the letter to follow its velocity direction
+  useFrame(() => {
+    if (groupRef.current && !active && !exploded) {
+      // Calculate rotation based on velocity to point in movement direction
+      const [vx, vy] = letter.velocity;
+      const angle = Math.atan2(vy, vx);
+      groupRef.current.rotation.z = angle;
+      
+      // Slightly vary the trail scale for a twinkling effect
+      if (trailRef.current && Math.random() > 0.8) {
+        const scaleVar = Math.random() * 0.1 + 0.95;
+        trailRef.current.scale.set(scaleVar, scaleVar, 1);
+      }
+    }
+  });
 
   const handleClick = () => {
-    if (!active) {
+    if (!active && !exploded) {
+      // Trigger explosion effects
+      setExploded(true);
+      setShowFlash(true);
+      setPlaySound(true);
+      
+      // Call the shoot handler
       onShoot(id);
+      
+      // Add haptic feedback for mobile
+      if (navigator.vibrate) {
+        navigator.vibrate(50);
+      }
+      
+      // Hide flash after a short time
+      setTimeout(() => setShowFlash(false), 100);
     }
   };
 
+  // If exploded but letter not active yet, show explosion
+  if (exploded && !active) {
+    return (
+      <>
+        <StarExplosion position={position} color={color} />
+        {showFlash && (
+          <pointLight 
+            position={position} 
+            intensity={5} 
+            distance={10} 
+            color="white"
+          />
+        )}
+        <ExplosionSound play={playSound} />
+      </>
+    );
+  }
+
+  // If letter is active (shot), don't render it
+  if (active) return null;
+
+  // Generate a color gradient for the star trail
+  const starColor = color;
+  // Get a darker version of the color for the trail end
+  const trailColor = color.replace(/^#/, '');
+  const r = parseInt(trailColor.substring(0, 2), 16);
+  const g = parseInt(trailColor.substring(2, 4), 16);
+  const b = parseInt(trailColor.substring(4, 6), 16);
+  const darkerTrailColor = `#${Math.floor(r * 0.4).toString(16).padStart(2, '0')}${Math.floor(g * 0.4).toString(16).padStart(2, '0')}${Math.floor(b * 0.4).toString(16).padStart(2, '0')}`;
+
   return (
-    <Billboard
+    <group 
+      ref={groupRef}
       position={position}
-      follow={true}
-      lockX={false}
-      lockY={false}
-      lockZ={false}
+      onClick={handleClick}
     >
-      <mesh
-        scale={active ? 1.5 : 1}
-        onClick={handleClick}
+      {/* Comet Trail */}
+      <mesh 
+        ref={trailRef}
+        position={[-0.8, 0, -0.1]} 
       >
-        <planeGeometry args={[1, 1]} /> 
+        <coneGeometry args={[0.3, 1.5, 8]} />
         <meshStandardMaterial 
-          color={color} 
-          transparent={active}
-          opacity={active ? 0.5 : 1}
+          color={darkerTrailColor} 
+          transparent={true} 
+          opacity={0.7}
+          emissive={darkerTrailColor}
+          emissiveIntensity={0.5}
         />
+      </mesh>
+      
+      {/* Star Head with the Letter */}
+      <mesh>
+        <sphereGeometry args={[0.5, 16, 16]} />
+        <meshStandardMaterial 
+          color={starColor} 
+          emissive={starColor}
+          emissiveIntensity={0.8}
+        />
+      </mesh>
+      
+      {/* Letter Text */}
+      <Billboard follow={true}>
         <Text
-          position={[0, 0, 0.01]}
-          fontSize={0.6}
-          color={active ? "gray" : "white"}
+          position={[0, 0, 0.6]}
+          fontSize={0.5}
+          color="white"
           anchorX="center"
           anchorY="middle"
           fontWeight="bold"
         >
           {character}
         </Text>
-      </mesh>
-    </Billboard>
-  );
-};
-
-// Outdoor shooting range environment - replacing the original indoor range
-const OutdoorShootingRangeEnvironment = () => {
-  return (
-    <>
-      {/* Sky */}
-      <color attach="background" args={["#87CEEB"]} />
+      </Billboard>
       
-      {/* Ambient and directional lights for outdoor setting */}
-      <ambientLight intensity={0.6} />
-      <directionalLight position={[10, 10, 5]} intensity={1} castShadow />
-      <directionalLight position={[-10, 5, -5]} intensity={0.4} />
-      
-      {/* Ground/grass field */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -3, 0]} receiveShadow>
-        <planeGeometry args={[100, 100]} />
-        <meshStandardMaterial color="#4caf50" />
-      </mesh>
-      
-      {/* Target range strip - a lighter colored grass area */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -2.99, -15]} receiveShadow>
-        <planeGeometry args={[20, 40]} />
-        <meshStandardMaterial color="#a5d6a7" />
-      </mesh>
-      
-      {/* Distance markers */}
-      {[5, 10, 15, 20, 25].map((dist) => (
-        <mesh key={dist} position={[0, -2.98, -dist]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-          <planeGeometry args={[10, 0.2]} />
-          <meshStandardMaterial color="#ffffff" />
-        </mesh>
-      ))}
-      
-      {/* Target backing wall */}
-      <mesh position={[0, 2, -30]} receiveShadow>
-        <boxGeometry args={[20, 10, 0.5]} />
-        <meshStandardMaterial color="#795548" />
-      </mesh>
-      
-      {/* Trees around the perimeter */}
-      {[
-        [-15, -2, -20],
-        [15, -2, -20],
-        [-20, -2, -10],
-        [20, -2, -10],
-        [-18, -2, -30],
-        [18, -2, -30],
-      ].map((position, index) => (
-        <group key={index} position={position as [number, number, number]}>
-          {/* Tree trunk */}
-          <mesh position={[0, 3, 0]} castShadow>
-            <cylinderGeometry args={[0.5, 0.7, 4, 8]} />
-            <meshStandardMaterial color="#5D4037" />
-          </mesh>
-          {/* Tree foliage */}
-          <mesh position={[0, 5.5, 0]} castShadow>
-            <coneGeometry args={[3, 5, 8]} />
-            <meshStandardMaterial color="#228B22" />
-          </mesh>
-        </group>
-      ))}
-      
-      {/* Mountain backdrop */}
-      <mesh position={[0, 15, -60]} receiveShadow>
-        <boxGeometry args={[100, 30, 1]} />
-        <meshStandardMaterial color="#9E9E9E" />
-      </mesh>
-    </>
-  );
-};
-
-// Rifle component that will appear in the foreground
-const Rifle = () => {
-  return (
-    <group position={[0.7, -0.5, 1]} rotation={[0, 0, 0]}>
-      {/* Rifle body */}
-      <mesh position={[0, 0, 0]} rotation={[0, -Math.PI / 2, 0]}>
-        <boxGeometry args={[1.5, 0.1, 0.2]} />
-        <meshStandardMaterial color="#5D4037" />
-      </mesh>
-      
-      {/* Rifle barrel */}
-      <mesh position={[-0.8, 0.05, 0]} rotation={[0, -Math.PI / 2, 0]}>
-        <cylinderGeometry args={[0.05, 0.05, 1, 8]} />
-        <meshStandardMaterial color="#424242" />
-      </mesh>
-      
-      {/* Rifle stock */}
-      <mesh position={[0.6, -0.1, 0]} rotation={[0, -Math.PI / 2, 0.2]}>
-        <boxGeometry args={[0.8, 0.2, 0.15]} />
-        <meshStandardMaterial color="#795548" />
-      </mesh>
-      
-      {/* Scope on top */}
-      <mesh position={[-0.3, 0.2, 0]} rotation={[0, -Math.PI / 2, 0]}>
-        <cylinderGeometry args={[0.07, 0.07, 0.4, 8]} />
-        <meshStandardMaterial color="#263238" />
-      </mesh>
+      {/* Small glow effect */}
+      <pointLight 
+        distance={3} 
+        intensity={0.6} 
+        color={starColor} 
+      />
     </group>
   );
 };
 
-// Scope overlay component that follows the mouse position
-const ScopeOverlay = () => {
+// Space environment component 
+const SpaceEnvironment = () => {
+  return (
+    <>
+      {/* Dark space background */}
+      <color attach="background" args={["#000010"]} />
+      
+      {/* Ambient and directional lights for space setting */}
+      <ambientLight intensity={0.2} />
+      <directionalLight position={[10, 10, 5]} intensity={0.5} />
+      <pointLight position={[-5, 2, -10]} intensity={1} color="#4169e1" />
+      <pointLight position={[5, -2, -15]} intensity={0.8} color="#800080" />
+      
+      {/* Built-in drei Stars component for background */}
+      <Stars 
+        radius={100}
+        depth={50}
+        count={5000}
+        factor={4}
+        saturation={0}
+        fade
+      />
+      
+      {/* Distant planets */}
+      <mesh position={[-20, 10, -50]} castShadow>
+        <sphereGeometry args={[5, 32, 32]} />
+        <meshStandardMaterial color="#4169e1" />
+        <pointLight position={[0, 0, 0]} intensity={0.5} color="#4169e1" distance={10} />
+      </mesh>
+      
+      <mesh position={[25, -15, -70]} castShadow>
+        <sphereGeometry args={[8, 32, 32]} />
+        <meshStandardMaterial color="#8A2BE2" />
+      </mesh>
+      
+      {/* Nebula effect with particles */}
+      <group position={[0, 0, -30]}>
+        {Array.from({ length: 50 }).map((_, i) => {
+          const size = Math.random() * 2 + 0.5;
+          const x = (Math.random() - 0.5) * 60;
+          const y = (Math.random() - 0.5) * 40;
+          const z = (Math.random() - 0.5) * 30 - 10;
+          
+          return (
+            <mesh key={`nebula-${i}`} position={[x, y, z]}>
+              <sphereGeometry args={[size, 8, 8]} />
+              <meshBasicMaterial 
+                color={i % 2 === 0 ? "#4B0082" : "#8A2BE2"} 
+                transparent={true}
+                opacity={0.05 + Math.random() * 0.1}
+              />
+            </mesh>
+          );
+        })}
+      </group>
+    </>
+  );
+};
+
+// Crosshair component with space theme using Tailwind
+const SpaceCrosshair = () => {
   const [mousePosition, setMousePosition] = React.useState({ x: 0, y: 0 });
   
   React.useEffect(() => {
-    // Handle mouse movement to update cursor position
     const handleMouseMove = (event: MouseEvent) => {
       setMousePosition({ x: event.clientX, y: event.clientY });
     };
     
-    // Add event listener
     window.addEventListener('mousemove', handleMouseMove);
     
-    // Cleanup function
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
     };
@@ -175,24 +224,25 @@ const ScopeOverlay = () => {
   
   return (
     <div 
-      className="fixed pointer-events-none"
+      className="fixed pointer-events-none z-50"
       style={{
-        left: mousePosition.x - 32, // Center the 64px wide crosshair
-        top: mousePosition.y - 32,  // Center the 64px tall crosshair
+        left: mousePosition.x - 32,
+        top: mousePosition.y - 32,
         width: '64px',
-        height: '64px',
-        zIndex: 100
+        height: '64px'
       }}
     >
-      {/* Outer scope ring */}
-      <div className="absolute inset-0 border-2 border-black rounded-full opacity-70"></div>
+      {/* Outer ring */}
+      <div className="absolute inset-0 border-2 border-blue-400 rounded-full opacity-80 animate-pulse"></div>
       
-      {/* Crosshairs */}
-      <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-black opacity-70"></div>
-      <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-black opacity-70"></div>
+      {/* Horizontal line */}
+      <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-blue-400 opacity-80"></div>
       
-      {/* Inner circle */}
-      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-1 h-1 rounded-full bg-red-500 opacity-80"></div>
+      {/* Vertical line */}
+      <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-blue-400 opacity-80"></div>
+      
+      {/* Center dot */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1 h-1 rounded-full bg-white opacity-100 animate-pulse"></div>
     </div>
   );
 };
@@ -203,22 +253,19 @@ interface GameCanvasProps {
   onShootLetter: (id: string) => void;
 }
 
-// Game canvas component that contains the 3D scene
+// Game canvas component that contains the 3D scene with space theme
 export default function GameCanvas({ letters, onShootLetter }: GameCanvasProps) {
   // Hide the default cursor
   React.useEffect(() => {
     document.body.style.cursor = 'none';
     
-    // Restore cursor when component unmounts
     return () => {
       document.body.style.cursor = 'auto';
     };
   }, []);
   
-  // Handle shooting when clicking
   const handleCanvasClick = () => {
-    // Raycasting is already handled by Three.js in the Letter component
-    // We just need to make sure the cursor shows
+    // Just for cursor visuals - shooting is handled in the StarLetter component
   };
   
   return (
@@ -228,34 +275,33 @@ export default function GameCanvas({ letters, onShootLetter }: GameCanvasProps) 
         camera={{ position: [0, 0, 10], fov: 60 }}
         onClick={handleCanvasClick}
       >
-        <OutdoorShootingRangeEnvironment />
+        <SpaceEnvironment />
         
-        {/* Render only the non-active letters (make them disappear when hit) */}
-        {letters.filter(letter => !letter.active).map((letter) => (
-          <Letter
+        {/* Render letters as shooting stars */}
+        {letters.map((letter) => (
+          <StarLetter
             key={letter.id}
             letter={letter}
             onShoot={onShootLetter}
           />
         ))}
         
-        {/* Add rifle in foreground */}
-        <Rifle />
-        
-        {/* Add orbit controls with very limited movement to maintain front view */}
+        {/* Orbit controls with limited movement */}
         <OrbitControls 
           enableZoom={true}
-          enableRotate={false}    // Disable rotation completely to keep front view
-          enablePan={true}        // Allow panning to move around the 2D plane
-          panSpeed={0.5}          // Reduce pan speed for better control
-          target={[0, 0, -15]}    // Look at the center of where letters are
-          maxDistance={20}        // Limit how far you can zoom out
-          minDistance={5}         // Limit how close you can zoom in
+          enableRotate={true}
+          minPolarAngle={Math.PI * 0.1}
+          maxPolarAngle={Math.PI * 0.9}
+          enablePan={true}
+          panSpeed={0.5}
+          target={[0, 0, -15]}
+          maxDistance={20}
+          minDistance={5}
         />
       </Canvas>
       
-      {/* Add custom mouse-following crosshair */}
-      <ScopeOverlay />
+      {/* Space-themed crosshair */}
+      <SpaceCrosshair />
     </div>
   );
 }
