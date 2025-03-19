@@ -105,64 +105,62 @@ export default function GamePage() {
       
       {/* Game HUD Overlay */}
       <div className="absolute inset-0 pointer-events-none z-10">
-        {/* Top HUD Bar */}
-        <div className="pointer-events-auto bg-indigo-900/40 backdrop-blur-md p-4 flex justify-between items-center border-b border-indigo-500/30">
-          <h1 className="text-2xl font-bold text-white drop-shadow-[0_0_5px_rgba(66,135,245,0.8)]">StarSpell</h1>
+        {/* HUD Elements - No Navbar */}
+        
+        {/* Game Stats and Controls - Repositioned to top right */}
+        <div className="absolute top-4 right-4 flex gap-3 flex-wrap justify-end pointer-events-auto">
+          {/* Score Display */}
+          <div className="bg-gray-900/70 backdrop-blur-md p-3 rounded-lg text-white border border-indigo-500/20 shadow-[0_0_15px_rgba(66,135,245,0.2)]">
+            <div className="text-sm opacity-80">Score</div>
+            <div className="text-2xl font-bold drop-shadow-[0_0_5px_rgba(66,135,245,0.8)]">{gameState.score}</div>
+          </div>
           
-          <div className="flex items-center space-x-6">
-            {/* Score Display */}
-            <div className="bg-gray-900/70 backdrop-blur-md p-3 rounded-lg text-white border border-indigo-500/20 shadow-[0_0_15px_rgba(66,135,245,0.2)]">
-              <div className="text-sm opacity-80">Score</div>
-              <div className="text-2xl font-bold drop-shadow-[0_0_5px_rgba(66,135,245,0.8)]">{gameState.score}</div>
-            </div>
-            
-            {/* Lives Display */}
-            <div className="bg-gray-900/70 backdrop-blur-md p-3 rounded-lg text-white border border-indigo-500/20 shadow-[0_0_15px_rgba(66,135,245,0.2)]">
-              <div className="text-sm opacity-80">Lives</div>
-              <div className="text-2xl font-bold flex">
-                {Array.from({ length: gameState.lives }).map((_, i) => (
-                  <span key={i} className="text-purple-400 mr-1 drop-shadow-[0_0_5px_rgba(66,135,245,0.8)]">★</span>
-                ))}
-              </div>
-            </div>
-            
-            {/* Timer Display */}
-            <div className="bg-gray-900/70 backdrop-blur-md p-3 rounded-lg text-white border border-indigo-500/20 shadow-[0_0_15px_rgba(66,135,245,0.2)]">
-              <div className="text-sm opacity-80">Time</div>
-              <div className="text-2xl font-bold drop-shadow-[0_0_5px_rgba(66,135,245,0.8)]">{Math.ceil(gameState.timeRemaining)}s</div>
-            </div>
-            
-            {/* Controls */}
-            <div className="flex gap-2 pointer-events-auto">
-              <button 
-                onClick={togglePause}
-                className={`px-4 py-2 rounded-lg text-white transition-all duration-300 shadow-lg hover:shadow-[0_0_15px_rgba(66,135,245,0.5)] ${
-                  isPaused 
-                    ? 'bg-gradient-to-r from-purple-700 to-purple-600' 
-                    : 'bg-gradient-to-r from-indigo-700 to-blue-600'
-                }`}
-              >
-                {isPaused ? "Resume" : "Pause"}
-              </button>
-              <Link href="/">
-                <button 
-                  className="px-4 py-2 rounded-lg bg-gray-800 text-white border border-indigo-500/30"
-                  onClick={() => {
-                    // Only clean up game-specific animations
-                    cleanupGameLoop();
-                    
-                    // Reset cursor style before navigation
-                    document.body.style.cursor = 'auto';
-                    
-                    // Clear any running timeouts
-                    clearPendingTimeouts();
-                  }}
-                >
-                  Exit
-                </button>
-              </Link>
+          {/* Lives Display */}
+          <div className="bg-gray-900/70 backdrop-blur-md p-3 rounded-lg text-white border border-indigo-500/20 shadow-[0_0_15px_rgba(66,135,245,0.2)]">
+            <div className="text-sm opacity-80">Lives</div>
+            <div className="text-2xl font-bold flex">
+              {Array.from({ length: gameState.lives }).map((_, i) => (
+                <span key={i} className="text-purple-400 mr-1 drop-shadow-[0_0_5px_rgba(66,135,245,0.8)]">★</span>
+              ))}
             </div>
           </div>
+          
+          {/* Timer Display */}
+          <div className="bg-gray-900/70 backdrop-blur-md p-3 rounded-lg text-white border border-indigo-500/20 shadow-[0_0_15px_rgba(66,135,245,0.2)]">
+            <div className="text-sm opacity-80">Time</div>
+            <div className="text-2xl font-bold drop-shadow-[0_0_5px_rgba(66,135,245,0.8)]">{Math.ceil(gameState.timeRemaining)}s</div>
+          </div>
+        </div>
+
+        {/* Controls - Repositioned to top left */}
+        <div className="absolute top-4 left-4 flex gap-2 pointer-events-auto">
+          <button 
+            onClick={togglePause}
+            className={`px-4 py-2 rounded-lg text-white transition-all duration-300 shadow-lg hover:shadow-[0_0_15px_rgba(66,135,245,0.5)] ${
+              isPaused 
+                ? 'bg-gradient-to-r from-purple-700 to-purple-600' 
+                : 'bg-gradient-to-r from-indigo-700 to-blue-600'
+            }`}
+          >
+            {isPaused ? "Resume" : "Pause"}
+          </button>
+          <Link href="/">
+            <button 
+              className="px-4 py-2 rounded-lg bg-gray-800 text-white border border-indigo-500/30"
+              onClick={() => {
+                // Only clean up game-specific animations
+                cleanupGameLoop();
+                
+                // Reset cursor style before navigation
+                document.body.style.cursor = 'auto';
+                
+                // Clear any running timeouts
+                clearPendingTimeouts();
+              }}
+            >
+              Exit
+            </button>
+          </Link>
         </div>
         
         {/* Target Word Display (Center Top) */}
