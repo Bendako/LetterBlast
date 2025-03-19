@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useMemo, Suspense } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Text, Billboard, Stars } from '@react-three/drei';
 import { Letter as LetterType } from '@/lib/game-engine';
@@ -14,7 +14,7 @@ interface LetterProps {
   onShoot: (id: string) => void;
 }
 
-const StarLetter = ({ letter, onShoot }: LetterProps) => {
+const StarLetter = React.memo(({ letter, onShoot }: LetterProps) => {
   const { id, character, position, color, active } = letter;
   
   // State for explosion effects
@@ -145,10 +145,36 @@ const StarLetter = ({ letter, onShoot }: LetterProps) => {
       />
     </group>
   );
+});
+
+StarLetter.displayName = 'StarLetter';
+
+// Low detail space environment for performance optimization
+const LowDetailSpaceEnvironment = () => {
+  return (
+    <>
+      {/* Dark space background */}
+      <color attach="background" args={["#000010"]} />
+      
+      {/* Reduced lighting for better performance */}
+      <ambientLight intensity={0.3} />
+      <directionalLight position={[10, 10, 5]} intensity={0.5} />
+      
+      {/* Simplified stars with fewer particles */}
+      <Stars 
+        radius={100}
+        depth={50}
+        count={1000} // Reduced from 5000
+        factor={3}
+        saturation={0}
+        fade
+      />
+    </>
+  );
 };
 
-// Space environment component 
-const SpaceEnvironment = () => {
+// Full detail space environment
+const HighDetailSpaceEnvironment = () => {
   return (
     <>
       {/* Dark space background */}
@@ -182,9 +208,9 @@ const SpaceEnvironment = () => {
         <meshStandardMaterial color="#8A2BE2" />
       </mesh>
       
-      {/* Nebula effect with particles */}
+      {/* Nebula effect with particles - reduced count */}
       <group position={[0, 0, -30]}>
-        {Array.from({ length: 50 }).map((_, i) => {
+        {Array.from({ length: 30 }).map((_, i) => {
           const size = Math.random() * 2 + 0.5;
           const x = (Math.random() - 0.5) * 60;
           const y = (Math.random() - 0.5) * 40;
@@ -204,6 +230,29 @@ const SpaceEnvironment = () => {
       </group>
     </>
   );
+};
+
+// Adaptive space environment that checks device capabilities
+const AdaptiveSpaceEnvironment = () => {
+  // Use state to track if device is high-end or low-end
+  const [isHighPerformance, setIsHighPerformance] = useState(true);
+  
+  useEffect(() => {
+    // Check device performance
+    const checkPerformance = () => {
+      // Simple check based on device pixel ratio and supported features
+      const isLowEnd = 
+        window.devicePixelRatio < 2 || 
+        navigator.hardwareConcurrency < 4 || 
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      
+      setIsHighPerformance(!isLowEnd);
+    };
+    
+    checkPerformance();
+  }, []);
+  
+  return isHighPerformance ? <HighDetailSpaceEnvironment /> : <LowDetailSpaceEnvironment />;
 };
 
 // Crosshair component with space theme using Tailwind
@@ -247,17 +296,33 @@ const SpaceCrosshair = () => {
   );
 };
 
+// Loading fallback for the 3D scene
+const SceneLoadingFallback = () => (
+  <div className="fixed inset-0 flex items-center justify-center bg-gray-900 z-10">
+    <div className="text-center">
+      <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+      <p className="text-white text-lg">Loading Space Environment...</p>
+    </div>
+  </div>
+);
+
 // Props for the GameCanvas component
 interface GameCanvasProps {
   letters: LetterType[];
   onShootLetter: (id: string) => void;
-  isGameOver: boolean; // Added new prop
+  isGameOver: boolean; 
 }
 
 // Game canvas component that contains the 3D scene with space theme
 export default function GameCanvas({ letters, onShootLetter, isGameOver }: GameCanvasProps) {
+  // Track scene loading
+  const [isSceneLoaded, setIsSceneLoaded] = useState(false);
+  
+  // Memoize letters to prevent unnecessary re-renders
+  const memoizedLetters = useMemo(() => letters, [letters]);
+  
   // Update the useEffect to conditionally set the cursor style
-  React.useEffect(() => {
+  useEffect(() => {
     // Only hide the cursor if the game is not over
     if (!isGameOver) {
       document.body.style.cursor = 'none';
@@ -268,42 +333,60 @@ export default function GameCanvas({ letters, onShootLetter, isGameOver }: GameC
     return () => {
       document.body.style.cursor = 'auto';
     };
-  }, [isGameOver]); // Add isGameOver to the dependency array
+  }, [isGameOver]); 
   
-  const handleCanvasClick = () => {
-    // Just for cursor visuals - shooting is handled in the StarLetter component
-  };
+  // Handle scene load complete
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsSceneLoaded(true);
+    }, 1000);
+    
+    return () => clearTimeout(timer);
+  }, []);
   
   return (
     <div className="fixed inset-0 w-full h-full z-0">
+      {!isSceneLoaded && <SceneLoadingFallback />}
+      
       <Canvas 
         shadows 
         camera={{ position: [0, 0, 10], fov: 60 }}
-        onClick={handleCanvasClick}
+        onCreated={() => {
+          // Force WebGL context optimization
+          const renderer = new THREE.WebGLRenderer();
+          renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Cap pixel ratio
+        }}
+        gl={{
+          antialias: false, // Disable antialiasing for performance
+          alpha: false,     // No transparency needed for background
+          powerPreference: 'high-performance',
+        }}
       >
-        <SpaceEnvironment />
-        
-        {/* Render letters as shooting stars */}
-        {letters.map((letter) => (
-          <StarLetter
-            key={letter.id}
-            letter={letter}
-            onShoot={onShootLetter}
+        <Suspense fallback={null}>
+          <AdaptiveSpaceEnvironment />
+          
+          {/* Render letters as shooting stars */}
+          {memoizedLetters.map((letter) => (
+            <StarLetter
+              key={letter.id}
+              letter={letter}
+              onShoot={onShootLetter}
+            />
+          ))}
+          
+          {/* Orbit controls with limited movement */}
+          <OrbitControls 
+            enableZoom={true}
+            enableRotate={true}
+            minPolarAngle={Math.PI * 0.1}
+            maxPolarAngle={Math.PI * 0.9}
+            enablePan={true}
+            panSpeed={0.5}
+            target={[0, 0, -15]}
+            maxDistance={20}
+            minDistance={5}
           />
-        ))}
-        
-        {/* Orbit controls with limited movement */}
-        <OrbitControls 
-          enableZoom={true}
-          enableRotate={true}
-          minPolarAngle={Math.PI * 0.1}
-          maxPolarAngle={Math.PI * 0.9}
-          enablePan={true}
-          panSpeed={0.5}
-          target={[0, 0, -15]}
-          maxDistance={20}
-          minDistance={5}
-        />
+        </Suspense>
       </Canvas>
       
       {/* Only show the crosshair when the game is not over */}
