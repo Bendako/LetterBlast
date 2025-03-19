@@ -32,7 +32,7 @@ export default function ExplosionSound({ play }: ExplosionSoundProps) {
       if (audioNodesRef.current.oscillator) {
         try {
           audioNodesRef.current.oscillator.disconnect();
-        } catch (e) {
+        } catch {
           // Ignore disconnect errors
         }
       }
@@ -40,7 +40,7 @@ export default function ExplosionSound({ play }: ExplosionSoundProps) {
       if (audioNodesRef.current.gainNode) {
         try {
           audioNodesRef.current.gainNode.disconnect();
-        } catch (e) {
+        } catch {
           // Ignore disconnect errors
         }
       }
@@ -50,7 +50,7 @@ export default function ExplosionSound({ play }: ExplosionSoundProps) {
           if (audioNodesRef.current.context.state !== 'closed') {
             audioNodesRef.current.context.close();
           }
-        } catch (e) {
+        } catch {
           // Ignore close errors
         }
       }
@@ -100,7 +100,7 @@ export default function ExplosionSound({ play }: ExplosionSoundProps) {
               
               // Don't close the context here as it might be reused
               audioNodesRef.current = {};
-            } catch (error) {
+            } catch {
               // Ignore cleanup errors
             }
           }
