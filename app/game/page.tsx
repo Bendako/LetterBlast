@@ -170,13 +170,13 @@ export default function GamePage() {
           </div>
         </div>
         
-        {/* Current Progress (Bottom Center) */}
-        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 bg-gray-900/70 backdrop-blur-md p-4 rounded-lg pointer-events-auto border border-indigo-500/20 shadow-[0_0_15px_rgba(66,135,245,0.2)]">
-          <div className="flex gap-2 justify-center">
+        {/* Current Progress (Bottom Center) - FIXED CENTERING */}
+        <div className="absolute bottom-8 left-0 right-0 mx-auto w-auto max-w-md bg-gray-900/70 backdrop-blur-md p-4 rounded-lg pointer-events-auto border border-indigo-500/20 shadow-[0_0_15px_rgba(66,135,245,0.2)]">
+          <div className="flex gap-2 justify-center items-center">
             {gameState.targetWord.split('').map((letter, index) => (
               <span 
                 key={index} 
-                className={`inline-block w-12 h-12 flex items-center justify-center rounded-md text-xl font-bold ${
+                className={`flex items-center justify-center w-12 h-12 rounded-md text-xl font-bold ${
                   index < gameState.currentWord.length 
                     ? 'bg-indigo-600 text-white drop-shadow-[0_0_5px_rgba(66,135,245,0.8)]' 
                     : 'bg-gray-800/70 text-white/50'
