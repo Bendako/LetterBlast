@@ -7,6 +7,7 @@ import { Letter as LetterType } from '@/lib/game-engine';
 import * as THREE from 'three';
 import StarExplosion from '@/components/StarExplosion';
 import ExplosionSound from '@/components/ExplosionSound';
+import LaserBeam from '@/components/LaserBeam';
 
 // Type definition for missed shot sound props
 interface MissedShotSoundProps {
@@ -61,52 +62,6 @@ const MissedShotSound: React.FC<MissedShotSoundProps> = ({ play }) => {
   }, [play]);
   
   return null;
-};
-
-// Type definitions for LaserBeam props
-interface LaserBeamProps {
-  start: THREE.Vector3;
-  end: THREE.Vector3;
-  color: string;
-  duration?: number;
-}
-
-// Laser beam effect for shooting visualization
-const LaserBeam: React.FC<LaserBeamProps> = ({ 
-  start, 
-  end, 
-  color, 
-  duration = 0.3 
-}) => {
-  const ref = useRef<THREE.Mesh>(null);
-  const [visible, setVisible] = useState<boolean>(true);
-  
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setVisible(false);
-    }, duration * 1000);
-    
-    return () => clearTimeout(timer);
-  }, [duration]);
-  
-  if (!visible) return null;
-  
-  // Calculate direction and length
-  const direction = new THREE.Vector3().subVectors(end, start).normalize();
-  const distance = start.distanceTo(end);
-  const position = new THREE.Vector3().addVectors(start, direction.clone().multiplyScalar(distance / 2));
-  
-  // Calculate rotation to point from start to end
-  const quaternion = new THREE.Quaternion();
-  const matrix = new THREE.Matrix4().lookAt(start, end, new THREE.Vector3(0, 1, 0));
-  quaternion.setFromRotationMatrix(matrix);
-  
-  return (
-    <mesh ref={ref} position={[position.x, position.y, position.z]} quaternion={quaternion}>
-      <cylinderGeometry args={[0.03, 0.03, distance, 8]} />
-      <meshBasicMaterial color={color} transparent opacity={0.7} />
-    </mesh>
-  );
 };
 
 // Type definitions for MissEffect props
@@ -667,7 +622,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ letters, onShootLetter, isGameO
     };
   }, []);
   
-  // Enhanced shoot handler with visual feedback
+  // Enhanced shoot handler with improved visual feedback
   const handleShoot = ({ 
     id, 
     point, 
@@ -679,10 +634,19 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ letters, onShootLetter, isGameO
   }) => {
     if (isGameOver) return;
     
-    // Add laser beam effect
+    // Create a slightly offset starting position 
+    // This makes the laser appear to come from a "weapon" position
+    // rather than directly from the camera center
+    const adjustedStart = new THREE.Vector3(
+      start.x + 1.5,  // Offset to the right side
+      start.y - 1,    // Offset down to simulate a gun position
+      start.z         // Keep same Z position
+    );
+    
+    // Add laser beam effect with adjusted starting position
     const beam: LaserBeam = {
       id: `beam-${Date.now()}`,
-      start,
+      start: adjustedStart,
       end: new THREE.Vector3(point.x, point.y, point.z),
       color: id ? '#4fc3f7' : '#ff5252', // Blue for potential hit, red for definite miss
       timestamp: Date.now()
@@ -693,6 +657,11 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ letters, onShootLetter, isGameO
     if (id) {
       // Attempt to shoot a letter
       onShootLetter(id);
+      
+      // Add haptic feedback for mobile devices if supported
+      if (navigator.vibrate) {
+        navigator.vibrate(25);
+      }
     } else {
       // Definitely missed all letters, show miss effect
       const missPosition: [number, number, number] = [point.x, point.y, point.z];
@@ -755,7 +724,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ letters, onShootLetter, isGameO
               start={beam.start}
               end={beam.end}
               color={beam.color}
-              duration={0.3}
+              duration={0.4}
+              thickness={0.03}
             />
           ))}
           
