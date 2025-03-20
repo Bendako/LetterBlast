@@ -138,29 +138,20 @@ export default function LaserBeam({
   
   if (!visible) return null;
   
-  // ===== IMPROVED: Modify the starting position to be more side-firing =====
-  // Instead of starting directly from the camera, offset to bottom right corner 
-  // to create a "gun position" effect
-  const adjustedStart = new THREE.Vector3(
-    start.x + 1.5,  // Offset to the right 
-    start.y - 1,    // Offset down
-    start.z         // Keep same z distance
-  );
-  
   // Calculate beam direction and length
-  const direction = new THREE.Vector3().subVectors(end, adjustedStart).normalize();
-  const distance = adjustedStart.distanceTo(end);
+  const direction = new THREE.Vector3().subVectors(end, start).normalize();
+  const distance = start.distanceTo(end);
   
   // Calculate beam position (midpoint)
   const position = new THREE.Vector3().addVectors(
-    adjustedStart, 
+    start, 
     direction.clone().multiplyScalar(distance / 2)
   );
   
   // Calculate rotation to point from start to end
   const quaternion = new THREE.Quaternion();
   const matrix = new THREE.Matrix4().lookAt(
-    adjustedStart, 
+    start, 
     end, 
     new THREE.Vector3(0, 1, 0)
   );
@@ -197,7 +188,7 @@ export default function LaserBeam({
         />
       </mesh>
       
-      {/* NEW: Traveling pulse effect along the beam */}
+      {/* Traveling pulse effect along the beam */}
       <mesh ref={pulseRef}>
         <sphereGeometry args={[thickness * 5, 16, 16]} />
         <meshBasicMaterial
@@ -218,7 +209,7 @@ export default function LaserBeam({
       />
       
       {/* Enhanced muzzle flash at the start point */}
-      <mesh position={[adjustedStart.x, adjustedStart.y, adjustedStart.z]}>
+      <mesh position={[start.x, start.y, start.z]}>
         <sphereGeometry args={[thickness * 2, 16, 16]} />
         <meshBasicMaterial 
           color="white" 
@@ -230,7 +221,7 @@ export default function LaserBeam({
       
       {/* Cone-shaped muzzle flash */}
       <mesh 
-        position={[adjustedStart.x, adjustedStart.y, adjustedStart.z]} 
+        position={[start.x, start.y, start.z]} 
         quaternion={quaternion}
       >
         <coneGeometry args={[thickness * 3, thickness * 6, 8]} />

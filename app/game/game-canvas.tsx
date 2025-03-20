@@ -249,7 +249,10 @@ const StarLetter = React.memo(({ letter, onShoot }: LetterProps) => {
   });
 
   // When a letter is hit directly (not through raycasting)
-  const handleClick = () => {
+  const handleClick = (event: React.MouseEvent) => {
+    // Stop propagation to prevent double-firing of events
+    event.stopPropagation();
+    
     if (isUnmountedRef.current) return;
     
     if (!active && !exploded) {
@@ -652,7 +655,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ letters, onShootLetter, isGameO
       timestamp: Date.now()
     };
     
-    setLaserBeams(prev => [...prev, beam]);
+    // Replace previous beams rather than adding to them
+    setLaserBeams([beam]);
     
     if (id) {
       // Attempt to shoot a letter
