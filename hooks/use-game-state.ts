@@ -13,6 +13,7 @@ import {
 export const useGameState = (initialDifficulty: GameDifficulty = 'easy') => {
   const [gameState, setGameState] = useState<GameState>(initializeGame(initialDifficulty));
   const [isPaused, setIsPaused] = useState<boolean>(false);
+  const [isMuted, setIsMuted] = useState<boolean>(false); // New state for sound muting
   const lastUpdateTimeRef = useRef<number>(performance.now());
   const requestIdRef = useRef<number | null>(null);
   const isUnmountedRef = useRef<boolean>(false);
@@ -95,6 +96,12 @@ export const useGameState = (initialDifficulty: GameDifficulty = 'easy') => {
     setIsPaused(current => !current);
   }, []);
 
+  // Toggle mute state - New function
+  const toggleMute = useCallback(() => {
+    if (isUnmountedRef.current) return;
+    setIsMuted(current => !current);
+  }, []);
+
   // Change difficulty
   const changeDifficulty = useCallback((difficulty: GameDifficulty) => {
     if (isUnmountedRef.current) return;
@@ -104,9 +111,11 @@ export const useGameState = (initialDifficulty: GameDifficulty = 'easy') => {
   return {
     gameState,
     isPaused,
+    isMuted, // New state
     shootLetter,
     restartGame,
     togglePause,
+    toggleMute, // New function
     changeDifficulty,
     cleanupGameLoop,
     safeSetTimeout,

@@ -4,9 +4,10 @@ import { useEffect, useRef } from 'react';
 
 interface MissedShotSoundProps {
   play: boolean;
+  isMuted?: boolean; // New prop
 }
 
-export default function MissedShotSound({ play }: MissedShotSoundProps) {
+export default function MissedShotSound({ play, isMuted = false }: MissedShotSoundProps) {
   // Track audio nodes for cleanup
   const audioNodesRef = useRef<{
     context?: AudioContext | null;
@@ -56,10 +57,10 @@ export default function MissedShotSound({ play }: MissedShotSoundProps) {
   }, []);
   
   useEffect(() => {
-    if (play && isMountedRef.current) {
+    if (play && isMountedRef.current && !isMuted) { // Check if not muted
       try {
         // Create audio context with proper typing
-                  const AudioContextClass = window.AudioContext || 
+        const AudioContextClass = window.AudioContext || 
           ((window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext);
         
         const audioContext = new AudioContextClass();
@@ -114,7 +115,7 @@ export default function MissedShotSound({ play }: MissedShotSoundProps) {
       // We don't do immediate cleanup here as it might interrupt the sound
       // The setTimeout above handles the proper cleanup timing
     };
-  }, [play]);
+  }, [play, isMuted]);
   
   return null;
 }

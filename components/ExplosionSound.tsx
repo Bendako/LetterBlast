@@ -4,10 +4,11 @@ import { useEffect, useRef } from 'react';
 
 interface ExplosionSoundProps {
   play: boolean;
-  isCorrect?: boolean; // New prop to distinguish between hit and miss sounds
+  isMuted?: boolean; // New prop
+  isCorrect?: boolean; // Existing prop
 }
 
-export default function ExplosionSound({ play, isCorrect = true }: ExplosionSoundProps) {
+export default function ExplosionSound({ play, isMuted = false, isCorrect = true }: ExplosionSoundProps) {
   // Clean up audio nodes
   const audioNodesRef = useRef<{
     context?: AudioContext | null;
@@ -67,7 +68,7 @@ export default function ExplosionSound({ play, isCorrect = true }: ExplosionSoun
   }, []);
   
   useEffect(() => {
-    if (play && isMountedRef.current) {
+    if (play && isMountedRef.current && !isMuted) { // Check if not muted
       try {
         // Create the explosion sound with proper typing
         const AudioContextClass = window.AudioContext || 
@@ -164,7 +165,7 @@ export default function ExplosionSound({ play, isCorrect = true }: ExplosionSoun
       // We don't do immediate cleanup here as it might interrupt the sound
       // The setTimeout above handles the proper cleanup timing
     };
-  }, [play, isCorrect]);
+  }, [play, isCorrect, isMuted]);
   
   return null;
 }

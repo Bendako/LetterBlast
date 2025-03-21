@@ -5,14 +5,17 @@ import GameCanvas from '@/app/game/game-canvas';
 import Link from 'next/link';
 import { useGameState } from '@/hooks/use-game-state';
 import { GameDifficulty } from '@/lib/game-engine';
+import { Volume2, VolumeX } from 'lucide-react'; // Import icons for mute button
 
 export default function GamePage() {
   const { 
     gameState, 
     isPaused, 
+    isMuted, // Get muted state
     shootLetter, 
     restartGame, 
     togglePause, 
+    toggleMute, // Get mute toggle function
     changeDifficulty,
     cleanupGameLoop 
   } = useGameState('easy');
@@ -100,7 +103,8 @@ export default function GamePage() {
       <GameCanvas 
         letters={gameState.letters} 
         onShootLetter={shootLetter}
-        isGameOver={gameState.isGameOver || showGameOver} // Pass the game over state
+        isGameOver={gameState.isGameOver || showGameOver}
+        isMuted={isMuted} // Pass the mute state
       />
       
       {/* Game HUD Overlay */}
@@ -144,6 +148,16 @@ export default function GamePage() {
           >
             {isPaused ? "Resume" : "Pause"}
           </button>
+          
+          {/* Add the mute button */}
+          <button 
+            onClick={toggleMute}
+            className="px-4 py-2 rounded-lg text-white transition-all duration-300 shadow-lg hover:shadow-[0_0_15px_rgba(66,135,245,0.5)] bg-gradient-to-r from-gray-700 to-gray-600"
+            aria-label={isMuted ? "Unmute" : "Mute"}
+          >
+            {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+          </button>
+          
           <Link href="/">
             <button 
               className="px-4 py-2 rounded-lg bg-gray-800 text-white border border-indigo-500/30"

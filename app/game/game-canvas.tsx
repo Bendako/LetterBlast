@@ -12,14 +12,24 @@ import LaserBeam from '@/components/LaserBeam';
 // Type definition for missed shot sound props
 interface MissedShotSoundProps {
   play: boolean;
+  isMuted?: boolean; // New prop for mute support
 }
 
 // Add a missed shot sound component
-const MissedShotSound: React.FC<MissedShotSoundProps> = ({ play }) => {
+const MissedShotSound: React.FC<MissedShotSoundProps> = ({ play, isMuted = false }) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const isMountedRef = useRef(true);
   
   useEffect(() => {
-    if (play && !audioRef.current) {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      audioRef.current = null;
+    };
+  }, []);
+  
+  useEffect(() => {
+    if (play && !isMuted && isMountedRef.current && !audioRef.current) {
       try {
         // Create audio context
         const AudioContextClass = window.AudioContext || 
@@ -47,8 +57,11 @@ const MissedShotSound: React.FC<MissedShotSoundProps> = ({ play }) => {
         
         // Cleanup
         setTimeout(() => {
-          oscillator.disconnect();
-          gainNode.disconnect();
+          if (isMountedRef.current) {
+            oscillator.disconnect();
+            gainNode.disconnect();
+            audioRef.current = null;
+          }
         }, 300);
         
       } catch (error) {
@@ -57,9 +70,9 @@ const MissedShotSound: React.FC<MissedShotSoundProps> = ({ play }) => {
     }
     
     return () => {
-      audioRef.current = null;
+      // Cleanup logic if needed
     };
-  }, [play]);
+  }, [play, isMuted]);
   
   return null;
 };
@@ -208,9 +221,10 @@ const Raycaster: React.FC<RaycasterProps> = ({ onShoot }) => {
 interface LetterProps {
   letter: LetterType;
   onShoot: (id: string) => void;
+  isMuted?: boolean; // New prop for mute support
 }
 
-const StarLetter = React.memo(({ letter, onShoot }: LetterProps) => {
+const StarLetter = React.memo(({ letter, onShoot, isMuted = false }: LetterProps) => {
   const { id, character, position, color, active } = letter;
   
   // State for explosion effects
@@ -296,7 +310,7 @@ const StarLetter = React.memo(({ letter, onShoot }: LetterProps) => {
             color="white"
           />
         )}
-        <ExplosionSound play={playSound} />
+        <ExplosionSound play={playSound} isMuted={isMuted} />
       </>
     );
   }
@@ -549,7 +563,8 @@ const SceneLoadingFallback: React.FC = () => (
 interface GameCanvasProps {
   letters: LetterType[];
   onShootLetter: (id: string) => void;
-  isGameOver: boolean; 
+  isGameOver: boolean;
+  isMuted: boolean; // New prop for mute support
 }
 
 // Type for laser beam state object
@@ -569,7 +584,12 @@ interface MissEffect {
 }
 
 // Game canvas component that contains the 3D scene with space theme
-const GameCanvas: React.FC<GameCanvasProps> = ({ letters, onShootLetter, isGameOver }) => {
+const GameCanvas: React.FC<GameCanvasProps> = ({ 
+  letters, 
+  onShootLetter, 
+  isGameOver,
+  isMuted 
+}) => {
   // Track scene loading
   const [isSceneLoaded, setIsSceneLoaded] = useState<boolean>(false);
   const isUnmountedRef = useRef<boolean>(false);
@@ -713,6 +733,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ letters, onShootLetter, isGameO
             <StarLetter
               key={letter.id}
               letter={letter}
+              isMuted={isMuted} // Pass muted state
               onShoot={(id) => handleShoot({
                 id,
                 point: new THREE.Vector3(...letter.position),
@@ -756,8 +777,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ letters, onShootLetter, isGameO
         </Suspense>
       </Canvas>
       
-      {/* Sound effect for missed shots */}
-      <MissedShotSound play={playMissSound} />
+      {/* Sound effect for missed shots - with mute support */}
+      <MissedShotSound play={playMissSound} isMuted={isMuted} />
       
       {/* Only show the crosshair when the game is not over */}
       {!isGameOver && <SpaceCrosshair />}
