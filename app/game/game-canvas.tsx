@@ -5,24 +5,30 @@ import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls, Text, Billboard, Stars } from '@react-three/drei';
 import { Letter as LetterType } from '@/lib/game-engine';
 import * as THREE from 'three';
+
+// Import existing components directly
 import StarExplosion from '@/components/StarExplosion';
+import LaserBeam from '@/components/LaserBeam';
 import ExplosionSound from '@/components/ExplosionSound';
 import MissedShotSound from '@/components/MissedShotSound';
-import LaserBeam from '@/components/LaserBeam';
 
-// Type definition for Raycaster props
-interface RaycasterProps {
-  onShoot: (data: { id: string | null; point: THREE.Vector3; start: THREE.Vector3 }) => void;
-  isGameOver: boolean;
-}
+// Import types and utility functions
+import { 
+  LaserBeamEffect, 
+  MissEffectState,
+  isTouchDevice as checkIsTouchDevice, 
+  isPortraitOrientation, 
+  getCameraPosition,
+  getOrbitControlsSettings,
+  getPixelRatioLimit
+} from '@/lib/types/game-types';
 
-// Type definition for MissEffect props
-interface MissEffectProps {
-  position: [number, number, number];
-}
+// === COMPONENT DEFINITIONS ===
 
-// Visual effect for missed shots
-const MissEffect: React.FC<MissEffectProps> = ({ position }) => {
+/**
+ * Visual effect for missed shots
+ */
+const MissEffect: React.FC<{ position: [number, number, number] }> = ({ position }) => {
   interface Particle {
     position: THREE.Vector3;
     velocity: THREE.Vector3;
@@ -79,8 +85,187 @@ const MissEffect: React.FC<MissEffectProps> = ({ position }) => {
   );
 };
 
-// Enhanced raycaster for both mouse and touch events
-const Raycaster: React.FC<RaycasterProps> = ({ onShoot, isGameOver }) => {
+/**
+ * Star Letter component that appears as a shooting star with a comet trail
+ */
+const StarLetter: React.FC<{ 
+  letter: LetterType; 
+  onShoot: (id: string) => void; 
+  isMuted?: boolean; 
+  isTouchDevice?: boolean 
+}> = ({ letter, onShoot, isMuted = false, isTouchDevice = false }) => {
+  const { id, character, position, color, active } = letter;
+  
+  // State for explosion effects
+  const [exploded, setExploded] = useState(false);
+  const [showFlash, setShowFlash] = useState(false);
+  const [playSound, setPlaySound] = useState(false);
+  
+  // References for animation
+  const groupRef = useRef<THREE.Group>(null);
+  const trailRef = useRef<THREE.Mesh>(null);
+  const isUnmountedRef = useRef(false);
+  
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      isUnmountedRef.current = true;
+    };
+  }, []);
+  
+  // Animate the letter to follow its velocity direction
+  useFrame(() => {
+    if (isUnmountedRef.current) return;
+    
+    if (groupRef.current && !active && !exploded) {
+      // Calculate rotation based on velocity to point in movement direction
+      const [vx, vy] = letter.velocity;
+      const angle = Math.atan2(vy, vx);
+      groupRef.current.rotation.z = angle;
+      
+      // Slightly vary the trail scale for a twinkling effect
+      if (trailRef.current && Math.random() > 0.8) {
+        const scaleVar = Math.random() * 0.1 + 0.95;
+        trailRef.current.scale.set(scaleVar, scaleVar, 1);
+      }
+    }
+  });
+
+  // When a letter is hit directly (not through raycasting)
+  const handleClick = (event: React.MouseEvent) => {
+    // On touch devices, we rely on the raycaster for better hit detection
+    if (isTouchDevice) return;
+    
+    // Stop propagation to prevent double-firing of events
+    event.stopPropagation();
+    
+    if (isUnmountedRef.current) return;
+    
+    if (!active && !exploded) {
+      // Trigger explosion effects
+      setExploded(true);
+      setShowFlash(true);
+      setPlaySound(true);
+      
+      // Call the shoot handler
+      onShoot(id);
+      
+      // Add haptic feedback for mobile
+      if (navigator.vibrate) {
+        navigator.vibrate(50);
+      }
+      
+      // Hide flash after a short time
+      const flashTimeout = setTimeout(() => {
+        if (!isUnmountedRef.current) {
+          setShowFlash(false);
+        }
+      }, 100);
+      
+      // Clean up timeout if component unmounts
+      return () => {
+        clearTimeout(flashTimeout);
+      };
+    }
+  };
+
+  // If exploded but letter not active yet, show explosion
+  if (exploded && !active) {
+    return (
+      <>
+        <StarExplosion position={position} color={color} />
+        {showFlash && (
+          <pointLight 
+            position={position} 
+            intensity={5} 
+            distance={10} 
+            color="white"
+          />
+        )}
+        <ExplosionSound play={playSound} isMuted={isMuted} />
+      </>
+    );
+  }
+
+  // If letter is active (shot), don't render it
+  if (active) return null;
+
+  // Generate a color gradient for the star trail
+  const starColor = color;
+  // Get a darker version of the color for the trail end
+  const trailColor = color.replace(/^#/, '');
+  const r = parseInt(trailColor.substring(0, 2), 16);
+  const g = parseInt(trailColor.substring(2, 4), 16);
+  const b = parseInt(trailColor.substring(4, 6), 16);
+  const darkerTrailColor = `#${Math.floor(r * 0.4).toString(16).padStart(2, '0')}${Math.floor(g * 0.4).toString(16).padStart(2, '0')}${Math.floor(b * 0.4).toString(16).padStart(2, '0')}`;
+
+  // Add touch-friendly scaling for mobile
+  const letterScale = isTouchDevice ? 1.3 : 1.0; // Larger on touch devices
+
+  return (
+    <group 
+      ref={groupRef}
+      position={position}
+      onClick={handleClick}
+      userData={{ letterId: id }} // Add letterId to userData for raycasting
+      scale={[letterScale, letterScale, letterScale]}
+    >
+      {/* Comet Trail */}
+      <mesh 
+        ref={trailRef}
+        position={[-0.8, 0, -0.1]} 
+      >
+        <coneGeometry args={[0.3, 1.5, 8]} />
+        <meshStandardMaterial 
+          color={darkerTrailColor} 
+          transparent={true} 
+          opacity={0.7}
+          emissive={darkerTrailColor}
+          emissiveIntensity={0.5}
+        />
+      </mesh>
+      
+      {/* Star Head with the Letter */}
+      <mesh>
+        <sphereGeometry args={[0.5, 16, 16]} />
+        <meshStandardMaterial 
+          color={starColor} 
+          emissive={starColor}
+          emissiveIntensity={0.8}
+        />
+      </mesh>
+      
+      {/* Letter Text */}
+      <Billboard follow={true}>
+        <Text
+          position={[0, 0, 0.6]}
+          fontSize={0.5}
+          color="white"
+          anchorX="center"
+          anchorY="middle"
+          fontWeight="bold"
+        >
+          {character}
+        </Text>
+      </Billboard>
+      
+      {/* Small glow effect */}
+      <pointLight 
+        distance={3} 
+        intensity={0.6} 
+        color={starColor} 
+      />
+    </group>
+  );
+};
+
+/**
+ * Enhanced raycaster for both mouse and touch events
+ */
+const Raycaster: React.FC<{ 
+  onShoot: (data: { id: string | null; point: THREE.Vector3; start: THREE.Vector3 }) => void; 
+  isGameOver: boolean 
+}> = ({ onShoot, isGameOver }) => {
   const { camera, gl, scene } = useThree();
   const raycaster = useMemo(() => new THREE.Raycaster(), []);
   const mouse = useMemo(() => new THREE.Vector2(), []);
@@ -275,183 +460,9 @@ const Raycaster: React.FC<RaycasterProps> = ({ onShoot, isGameOver }) => {
   return null;
 };
 
-// Star Letter component that appears as a shooting star with a comet trail
-interface LetterProps {
-  letter: LetterType;
-  onShoot: (id: string) => void;
-  isMuted?: boolean;
-  isTouchDevice?: boolean;
-}
-
-const StarLetter = React.memo(({ letter, onShoot, isMuted = false, isTouchDevice = false }: LetterProps) => {
-  const { id, character, position, color, active } = letter;
-  
-  // State for explosion effects
-  const [exploded, setExploded] = useState(false);
-  const [showFlash, setShowFlash] = useState(false);
-  const [playSound, setPlaySound] = useState(false);
-  
-  // References for animation
-  const groupRef = useRef<THREE.Group>(null);
-  const trailRef = useRef<THREE.Mesh>(null);
-  const isUnmountedRef = useRef(false);
-  
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      isUnmountedRef.current = true;
-    };
-  }, []);
-  
-  // Animate the letter to follow its velocity direction
-  useFrame(() => {
-    if (isUnmountedRef.current) return;
-    
-    if (groupRef.current && !active && !exploded) {
-      // Calculate rotation based on velocity to point in movement direction
-      const [vx, vy] = letter.velocity;
-      const angle = Math.atan2(vy, vx);
-      groupRef.current.rotation.z = angle;
-      
-      // Slightly vary the trail scale for a twinkling effect
-      if (trailRef.current && Math.random() > 0.8) {
-        const scaleVar = Math.random() * 0.1 + 0.95;
-        trailRef.current.scale.set(scaleVar, scaleVar, 1);
-      }
-    }
-  });
-
-  // When a letter is hit directly (not through raycasting)
-  const handleClick = (event: React.MouseEvent) => {
-    // On touch devices, we rely on the raycaster for better hit detection
-    if (isTouchDevice) return;
-    
-    // Stop propagation to prevent double-firing of events
-    event.stopPropagation();
-    
-    if (isUnmountedRef.current) return;
-    
-    if (!active && !exploded) {
-      // Trigger explosion effects
-      setExploded(true);
-      setShowFlash(true);
-      setPlaySound(true);
-      
-      // Call the shoot handler
-      onShoot(id);
-      
-      // Add haptic feedback for mobile
-      if (navigator.vibrate) {
-        navigator.vibrate(50);
-      }
-      
-      // Hide flash after a short time
-      const flashTimeout = setTimeout(() => {
-        if (!isUnmountedRef.current) {
-          setShowFlash(false);
-        }
-      }, 100);
-      
-      // Clean up timeout if component unmounts
-      return () => {
-        clearTimeout(flashTimeout);
-      };
-    }
-  };
-
-  // If exploded but letter not active yet, show explosion
-  if (exploded && !active) {
-    return (
-      <>
-        <StarExplosion position={position} color={color} />
-        {showFlash && (
-          <pointLight 
-            position={position} 
-            intensity={5} 
-            distance={10} 
-            color="white"
-          />
-        )}
-        <ExplosionSound play={playSound} isMuted={isMuted} />
-      </>
-    );
-  }
-
-  // If letter is active (shot), don't render it
-  if (active) return null;
-
-  // Generate a color gradient for the star trail
-  const starColor = color;
-  // Get a darker version of the color for the trail end
-  const trailColor = color.replace(/^#/, '');
-  const r = parseInt(trailColor.substring(0, 2), 16);
-  const g = parseInt(trailColor.substring(2, 4), 16);
-  const b = parseInt(trailColor.substring(4, 6), 16);
-  const darkerTrailColor = `#${Math.floor(r * 0.4).toString(16).padStart(2, '0')}${Math.floor(g * 0.4).toString(16).padStart(2, '0')}${Math.floor(b * 0.4).toString(16).padStart(2, '0')}`;
-
-  // Add touch-friendly scaling for mobile
-  const letterScale = isTouchDevice ? 1.3 : 1.0; // Larger on touch devices
-
-  return (
-    <group 
-      ref={groupRef}
-      position={position}
-      onClick={handleClick}
-      userData={{ letterId: id }} // Add letterId to userData for raycasting
-      scale={[letterScale, letterScale, letterScale]}
-    >
-      {/* Comet Trail */}
-      <mesh 
-        ref={trailRef}
-        position={[-0.8, 0, -0.1]} 
-      >
-        <coneGeometry args={[0.3, 1.5, 8]} />
-        <meshStandardMaterial 
-          color={darkerTrailColor} 
-          transparent={true} 
-          opacity={0.7}
-          emissive={darkerTrailColor}
-          emissiveIntensity={0.5}
-        />
-      </mesh>
-      
-      {/* Star Head with the Letter */}
-      <mesh>
-        <sphereGeometry args={[0.5, 16, 16]} />
-        <meshStandardMaterial 
-          color={starColor} 
-          emissive={starColor}
-          emissiveIntensity={0.8}
-        />
-      </mesh>
-      
-      {/* Letter Text */}
-      <Billboard follow={true}>
-        <Text
-          position={[0, 0, 0.6]}
-          fontSize={0.5}
-          color="white"
-          anchorX="center"
-          anchorY="middle"
-          fontWeight="bold"
-        >
-          {character}
-        </Text>
-      </Billboard>
-      
-      {/* Small glow effect */}
-      <pointLight 
-        distance={3} 
-        intensity={0.6} 
-        color={starColor} 
-      />
-    </group>
-  );
-});
-
-StarLetter.displayName = 'StarLetter';
-
-// Low detail space environment for performance optimization
+/**
+ * Low detail space environment for performance optimization
+ */
 const LowDetailSpaceEnvironment: React.FC = () => {
   return (
     <>
@@ -466,7 +477,7 @@ const LowDetailSpaceEnvironment: React.FC = () => {
       <Stars 
         radius={100}
         depth={50}
-        count={800} // Further reduced from 1000 for mobile
+        count={800} // Reduced for mobile
         factor={3}
         saturation={0}
         fade
@@ -475,7 +486,9 @@ const LowDetailSpaceEnvironment: React.FC = () => {
   );
 };
 
-// Full detail space environment
+/**
+ * Full detail space environment
+ */
 const HighDetailSpaceEnvironment: React.FC = () => {
   return (
     <>
@@ -534,17 +547,17 @@ const HighDetailSpaceEnvironment: React.FC = () => {
   );
 };
 
-// Improved adaptive space environment that considers more device factors
+/**
+ * Adaptive space environment that intelligently selects rendering detail
+ */
 const AdaptiveSpaceEnvironment: React.FC = () => {
-  // Use state to track if device is high-end or low-end
   const [isHighPerformance, setIsHighPerformance] = useState<boolean>(true);
   const isUnmountedRef = useRef<boolean>(false);
   
   useEffect(() => {
-    // Setup unmounted flag
     isUnmountedRef.current = false;
     
-    // More comprehensive device performance check
+    // Comprehensive device performance check
     const checkPerformance = () => {
       // Performance factors to consider
       const pixelRatio = window.devicePixelRatio || 1;
@@ -600,12 +613,8 @@ const AdaptiveSpaceEnvironment: React.FC = () => {
       }
       
       // Make determination
-      determinePerformance(performanceScore);
-    };
-    
-    const determinePerformance = (score: number) => {
       if (!isUnmountedRef.current) {
-        setIsHighPerformance(score >= 2); // Threshold for high performance
+        setIsHighPerformance(performanceScore >= 2); // Threshold for high performance
       }
     };
     
@@ -632,7 +641,9 @@ const AdaptiveSpaceEnvironment: React.FC = () => {
   return isHighPerformance ? <HighDetailSpaceEnvironment /> : <LowDetailSpaceEnvironment />;
 };
 
-// Touch-friendly crosshair component that adapts to different devices
+/**
+ * Touch-friendly crosshair component that adapts to different devices
+ */
 const AdaptiveCrosshair: React.FC = () => {
   const [mousePosition, setMousePosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isTouchDevice, setIsTouchDevice] = useState(false);
@@ -728,7 +739,7 @@ const AdaptiveCrosshair: React.FC = () => {
         opacity: crosshairOpacity
       }}
     >
-      {/* Outer ring - adapted for visibility on both dark and light backgrounds */}
+      {/* Outer ring */}
       <div className="absolute inset-0 border-2 border-blue-400 rounded-full opacity-80 animate-pulse"></div>
       
       {/* Horizontal line */}
@@ -740,7 +751,7 @@ const AdaptiveCrosshair: React.FC = () => {
       {/* Center dot */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-white opacity-100 animate-pulse"></div>
       
-      {/* Touch-specific inner circle for touch devices */}
+      {/* Touch-specific inner circle */}
       {isTouchDevice && (
         <div className="absolute inset-1/4 border border-white/50 rounded-full"></div>
       )}
@@ -748,7 +759,9 @@ const AdaptiveCrosshair: React.FC = () => {
   );
 };
 
-// Loading fallback for the 3D scene
+/**
+ * Loading fallback for the 3D scene
+ */
 const SceneLoadingFallback: React.FC = () => (
   <div className="fixed inset-0 flex items-center justify-center bg-gray-900 z-10">
     <div className="text-center">
@@ -758,31 +771,39 @@ const SceneLoadingFallback: React.FC = () => (
   </div>
 );
 
-// Props for the GameCanvas component
-interface GameCanvasProps {
+/**
+ * Orientation warning for mobile devices in portrait mode
+ */
+const OrientationWarning: React.FC<{ isTouchDevice: boolean, isPortrait: boolean }> = ({ 
+  isTouchDevice, 
+  isPortrait 
+}) => {
+  if (!isTouchDevice || !isPortrait) return null;
+  
+  return (
+    <div className="fixed bottom-28 left-0 right-0 mx-auto w-auto max-w-md px-4 py-3 bg-black/80 text-white text-center rounded-md z-50 backdrop-blur-sm border border-yellow-500/30 shadow-[0_0_15px_rgba(255,215,0,0.3)]">
+      <p className="flex items-center justify-center gap-1">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-yellow-400">
+          <path fillRule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" />
+        </svg>
+        Rotate device to landscape for best experience
+      </p>
+    </div>
+  );
+};
+
+// === MAIN GAME CANVAS COMPONENT ===
+
+/**
+ * The main GameCanvas component that renders the 3D game world
+ */
+export interface GameCanvasProps {
   letters: LetterType[];
   onShootLetter: (id: string) => void;
   isGameOver: boolean;
   isMuted: boolean;
 }
 
-// Type for laser beam state object
-interface LaserBeam {
-  id: string;
-  start: THREE.Vector3;
-  end: THREE.Vector3;
-  color: string;
-  timestamp: number;
-}
-
-// Type for miss effect state object
-interface MissEffect {
-  id: string;
-  position: [number, number, number];
-  timestamp: number;
-}
-
-// Enhanced Game canvas component with responsive design for all screen sizes
 const GameCanvas: React.FC<GameCanvasProps> = ({ 
   letters, 
   onShootLetter, 
@@ -794,8 +815,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   const isUnmountedRef = useRef<boolean>(false);
   
   // State for visual effects
-  const [laserBeams, setLaserBeams] = useState<LaserBeam[]>([]);
-  const [missEffects, setMissEffects] = useState<MissEffect[]>([]);
+  const [laserBeams, setLaserBeams] = useState<LaserBeamEffect[]>([]);
+  const [missEffects, setMissEffects] = useState<MissEffectState[]>([]);
   const [playMissSound, setPlayMissSound] = useState<boolean>(false);
   
   // Device capability detection
@@ -804,12 +825,12 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   
   // Detect device capabilities and orientation
   useEffect(() => {
-    setIsTouchDevice('ontouchstart' in window || navigator.maxTouchPoints > 0);
-    setIsPortrait(window.innerHeight > window.innerWidth);
+    setIsTouchDevice(checkIsTouchDevice());
+    setIsPortrait(isPortraitOrientation());
     
     const handleResize = () => {
       if (!isUnmountedRef.current) {
-        setIsPortrait(window.innerHeight > window.innerWidth);
+        setIsPortrait(isPortraitOrientation());
       }
     };
     
@@ -836,7 +857,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     return () => clearInterval(interval);
   }, []);
   
-  // Update the useEffect to conditionally set the cursor style
+  // Update cursor style based on game state
   useEffect(() => {
     isUnmountedRef.current = false;
     
@@ -868,7 +889,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     };
   }, []);
   
-  // Enhanced shoot handler with improved visual feedback and touch support
+  // Shoot handler with improved visual feedback
   const handleShoot = useCallback(({ 
     id, 
     point, 
@@ -888,7 +909,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     );
     
     // Add laser beam effect with adjusted starting position
-    const beam: LaserBeam = {
+    const beam: LaserBeamEffect = {
       id: `beam-${Date.now()}`,
       start: adjustedStart,
       end: new THREE.Vector3(point.x, point.y, point.z),
@@ -925,81 +946,17 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     }
   }, [isGameOver, isTouchDevice, onShootLetter]);
   
-  // Camera position calculation based on device orientation and type
-  const getCameraPosition = useCallback((): [number, number, number] => {
-    if (isTouchDevice) {
-      // For touch devices, adjust camera position based on orientation
-      if (isPortrait) {
-        return [0, 0, 13]; // Move camera even further back in portrait for better view
-      } else {
-        return [0, 0, 12]; // Slightly closer in landscape
-      }
-    } else {
-      // Desktop default
-      return [0, 0, 10];
-    }
-  }, [isTouchDevice, isPortrait]);
-  
-  // OrbitControls settings calculation based on device type
-  const getOrbitControlsSettings = useCallback(() => {
-    if (isTouchDevice) {
-      return {
-        enableZoom: true,
-        enableRotate: true,
-        minPolarAngle: Math.PI * 0.25, // More limited rotation on mobile
-        maxPolarAngle: Math.PI * 0.75, // More limited rotation on mobile
-        enablePan: true,
-        panSpeed: 0.4, // Slower pan for more control
-        rotateSpeed: 0.4, // Slower rotation for more control
-        target: new THREE.Vector3(0, 0, -15),
-        maxDistance: 18,
-        minDistance: 7, // Increased min distance to prevent getting too close
-        enabled: !isGameOver, // Disable controls when game is over
-        dampingFactor: 0.1, // Add damping for smoother control
-      };
-    } else {
-      // Desktop default
-      return {
-        enableZoom: true,
-        enableRotate: true,
-        minPolarAngle: Math.PI * 0.1,
-        maxPolarAngle: Math.PI * 0.9,
-        enablePan: true,
-        panSpeed: 0.5,
-        target: new THREE.Vector3(0, 0, -15),
-        maxDistance: 20,
-        minDistance: 5,
-        enabled: !isGameOver, // Disable controls when game is over
-      };
-    }
-  }, [isTouchDevice, isGameOver]);
-  
-  // Calculate pixel ratio limit based on device
-  const getPixelRatioLimit = useCallback(() => {
-    // Limit pixel ratio more aggressively on touch devices
-    return isTouchDevice ? 
-      Math.min(window.devicePixelRatio, 1.5) : // Lower for mobile for better performance
-      Math.min(window.devicePixelRatio, 2);    // Higher limit for desktop
-  }, [isTouchDevice]);
-  
-  // Orientation warning for mobile devices in portrait mode
-  const OrientationWarning = () => {
-    if (!isTouchDevice || !isPortrait) return null;
-    
-    return (
-      <div className="fixed bottom-28 left-0 right-0 mx-auto w-auto max-w-md px-4 py-3 bg-black/80 text-white text-center rounded-md z-50 backdrop-blur-sm border border-yellow-500/30 shadow-[0_0_15px_rgba(255,215,0,0.3)]">
-        <p className="flex items-center justify-center gap-1">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-yellow-400">
-            <path fillRule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" />
-          </svg>
-          Rotate device to landscape for best experience
-        </p>
-      </div>
-    );
-  };
-  
   // Get orbit controls settings
-  const orbitSettings = getOrbitControlsSettings();
+  const orbitSettings = useMemo(() => 
+    getOrbitControlsSettings(isTouchDevice, isGameOver),
+    [isTouchDevice, isGameOver]
+  );
+  
+  // Get camera position
+  const cameraPosition = useMemo(() => 
+    getCameraPosition(isTouchDevice, isPortrait),
+    [isTouchDevice, isPortrait]
+  );
   
   return (
     <div className="fixed inset-0 w-full h-full z-0">
@@ -1007,10 +964,10 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       
       <Canvas 
         shadows 
-        camera={{ position: getCameraPosition(), fov: isTouchDevice ? 65 : 60 }}
+        camera={{ position: cameraPosition, fov: isTouchDevice ? 65 : 60 }}
         onCreated={({ gl }) => {
           // Force WebGL context optimization
-          gl.setPixelRatio(getPixelRatioLimit());
+          gl.setPixelRatio(getPixelRatioLimit(isTouchDevice));
           
           // Additional touch-specific optimizations
           if (isTouchDevice) {
@@ -1045,10 +1002,10 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               letter={letter}
               isMuted={isMuted}
               isTouchDevice={isTouchDevice}
-              onShoot={(id) => handleShoot({
+              onShoot={(id: string) => handleShoot({
                 id,
                 point: new THREE.Vector3(...letter.position),
-                start: new THREE.Vector3(0, 0, getCameraPosition()[2])
+                start: new THREE.Vector3(0, 0, cameraPosition[2])
               })}
             />
           ))}
@@ -1082,11 +1039,11 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             enablePan={orbitSettings.enablePan}
             panSpeed={orbitSettings.panSpeed}
             rotateSpeed={orbitSettings.rotateSpeed || 1}
-            target={orbitSettings.target}
+            target={new THREE.Vector3(...orbitSettings.target)}
             maxDistance={orbitSettings.maxDistance}
             minDistance={orbitSettings.minDistance}
             enabled={orbitSettings.enabled}
-            dampingFactor={orbitSettings.dampingFactor || 0.05}
+            dampingFactor={orbitSettings.dampingFactor}
             enableDamping={true}
           />
         </Suspense>
@@ -1099,7 +1056,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       {!isGameOver && <AdaptiveCrosshair />}
       
       {/* Orientation advice for mobile users */}
-      <OrientationWarning />
+      <OrientationWarning isTouchDevice={isTouchDevice} isPortrait={isPortrait} />
     </div>
   );
 };
