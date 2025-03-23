@@ -1,83 +1,22 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useMemo, Suspense } from 'react';
+import React, { useState, useRef, useEffect, useMemo, Suspense, useCallback } from 'react';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls, Text, Billboard, Stars } from '@react-three/drei';
 import { Letter as LetterType } from '@/lib/game-engine';
 import * as THREE from 'three';
 import StarExplosion from '@/components/StarExplosion';
 import ExplosionSound from '@/components/ExplosionSound';
+import MissedShotSound from '@/components/MissedShotSound';
 import LaserBeam from '@/components/LaserBeam';
 
-// Type definition for missed shot sound props
-interface MissedShotSoundProps {
-  play: boolean;
-  isMuted?: boolean;
+// Type definition for Raycaster props
+interface RaycasterProps {
+  onShoot: (data: { id: string | null; point: THREE.Vector3; start: THREE.Vector3 }) => void;
+  isGameOver: boolean;
 }
 
-// Add a missed shot sound component
-const MissedShotSound: React.FC<MissedShotSoundProps> = ({ play, isMuted = false }) => {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const isMountedRef = useRef(true);
-  
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-      audioRef.current = null;
-    };
-  }, []);
-  
-  useEffect(() => {
-    if (play && !isMuted && isMountedRef.current && !audioRef.current) {
-      try {
-        // Create audio context
-        const AudioContextClass = window.AudioContext || 
-          ((window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext);
-        
-        const audioContext = new AudioContextClass();
-        
-        // Configure sound for missed shot - higher pitch, shorter duration
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-        
-        oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(480, audioContext.currentTime);
-        oscillator.frequency.exponentialRampToValueAtTime(100, audioContext.currentTime + 0.2);
-        
-        gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
-        
-        // Connect and play
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-        
-        oscillator.start();
-        oscillator.stop(audioContext.currentTime + 0.2);
-        
-        // Cleanup
-        setTimeout(() => {
-          if (isMountedRef.current) {
-            oscillator.disconnect();
-            gainNode.disconnect();
-            audioRef.current = null;
-          }
-        }, 300);
-        
-      } catch (error) {
-        console.error("Error playing missed shot sound:", error);
-      }
-    }
-    
-    return () => {
-      // Cleanup logic if needed
-    };
-  }, [play, isMuted]);
-  
-  return null;
-};
-
-// Type definitions for MissEffect props
+// Type definition for MissEffect props
 interface MissEffectProps {
   position: [number, number, number];
 }
@@ -140,12 +79,6 @@ const MissEffect: React.FC<MissEffectProps> = ({ position }) => {
   );
 };
 
-// Type definition for Raycaster props
-interface RaycasterProps {
-  onShoot: (data: { id: string | null; point: THREE.Vector3; start: THREE.Vector3 }) => void;
-  isGameOver: boolean;
-}
-
 // Enhanced raycaster for both mouse and touch events
 const Raycaster: React.FC<RaycasterProps> = ({ onShoot, isGameOver }) => {
   const { camera, gl, scene } = useThree();
@@ -154,6 +87,7 @@ const Raycaster: React.FC<RaycasterProps> = ({ onShoot, isGameOver }) => {
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const isTouchDevice = useRef(false);
   const lastShootTime = useRef(0);
+  const touchMoveCountRef = useRef(0);
   
   // Detect if device supports touch events
   useEffect(() => {
@@ -161,15 +95,15 @@ const Raycaster: React.FC<RaycasterProps> = ({ onShoot, isGameOver }) => {
   }, []);
   
   // Normalized coordinate calculation from screen position
-  const getNormalizedCoords = (clientX: number, clientY: number) => {
+  const getNormalizedCoords = useCallback((clientX: number, clientY: number) => {
     return {
       x: (clientX / gl.domElement.clientWidth) * 2 - 1,
       y: -(clientY / gl.domElement.clientHeight) * 2 + 1
     };
-  };
+  }, [gl.domElement.clientWidth, gl.domElement.clientHeight]);
   
   // Perform ray casting and shooting logic
-  const performRaycast = (normalizedX: number, normalizedY: number) => {
+  const performRaycast = useCallback((normalizedX: number, normalizedY: number) => {
     if (isGameOver) return;
     
     // Rate limit shooting to prevent accidental rapid taps/clicks
@@ -235,13 +169,17 @@ const Raycaster: React.FC<RaycasterProps> = ({ onShoot, isGameOver }) => {
         start,
       });
     }
-  };
+  }, [camera, isGameOver, mouse, onShoot, raycaster, scene.children]);
   
   // Mouse event handlers
   useEffect(() => {
     const handleClick = (event: MouseEvent) => {
       // Skip if this is a touch device - we'll use touch events instead
       if (isTouchDevice.current) return;
+      
+      // Skip if clicked on a UI element with pointer-events-auto
+      const target = event.target as Element;
+      if (target.closest('.pointer-events-auto')) return;
       
       const coords = getNormalizedCoords(event.clientX, event.clientY);
       performRaycast(coords.x, coords.y);
@@ -252,12 +190,16 @@ const Raycaster: React.FC<RaycasterProps> = ({ onShoot, isGameOver }) => {
     return () => {
       gl.domElement.removeEventListener('click', handleClick);
     };
-  }, [camera, gl, isGameOver, onShoot, raycaster, scene.children]);
+  }, [gl.domElement, getNormalizedCoords, performRaycast]);
   
-  // Touch event handlers
+  // Touch event handlers with improved touch detection
   useEffect(() => {
     const handleTouchStart = (event: TouchEvent) => {
       if (event.touches.length !== 1) return;
+      
+      // Skip if touched on a UI element with pointer-events-auto
+      const target = event.target as Element;
+      if (target.closest('.pointer-events-auto')) return;
       
       // Store initial touch position for potential drag detection
       touchStartRef.current = {
@@ -265,13 +207,30 @@ const Raycaster: React.FC<RaycasterProps> = ({ onShoot, isGameOver }) => {
         y: event.touches[0].clientY
       };
       
-      // Prevent default to avoid scrolling/zooming
-      event.preventDefault();
+      // Reset touch move counter on new touch
+      touchMoveCountRef.current = 0;
+      
+      // Prevent default only for game canvas interactions (not UI)
+      if (!target.closest('.pointer-events-auto')) {
+        event.preventDefault();
+      }
+    };
+    
+    const handleTouchMove = () => {
+      // Increment move counter to track dragging
+      touchMoveCountRef.current++;
     };
     
     const handleTouchEnd = (event: TouchEvent) => {
       // Only process if we have a valid touch start position
       if (!touchStartRef.current) return;
+      
+      // Skip if touched on a UI element with pointer-events-auto
+      const target = event.target as Element;
+      if (target.closest('.pointer-events-auto')) {
+        touchStartRef.current = null;
+        return;
+      }
       
       // Get the position of the touch end or use the last touch start position
       const touchEndX = event.changedTouches[0]?.clientX || touchStartRef.current.x;
@@ -282,8 +241,8 @@ const Raycaster: React.FC<RaycasterProps> = ({ onShoot, isGameOver }) => {
       const distanceY = touchEndY - touchStartRef.current.y;
       const dragDistance = Math.sqrt(distanceX * distanceX + distanceY * distanceY);
       
-      // If drag distance is small enough, consider it a tap/shoot
-      if (dragDistance < 20) {
+      // If drag distance is small enough and not too many move events (more reliable tap detection)
+      if (dragDistance < 20 && touchMoveCountRef.current < 5) {
         const coords = getNormalizedCoords(touchEndX, touchEndY);
         performRaycast(coords.x, coords.y);
       }
@@ -292,23 +251,26 @@ const Raycaster: React.FC<RaycasterProps> = ({ onShoot, isGameOver }) => {
       touchStartRef.current = null;
       
       // Prevent default to avoid any unwanted behaviors
-      event.preventDefault();
+      if (!target.closest('.pointer-events-auto')) {
+        event.preventDefault();
+      }
     };
     
     // Add touch event listeners only if this is a touch device
     if (isTouchDevice.current) {
-      const canvas = gl.domElement;
-      canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
-      canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+      document.addEventListener('touchstart', handleTouchStart, { passive: false });
+      document.addEventListener('touchmove', handleTouchMove, { passive: true });
+      document.addEventListener('touchend', handleTouchEnd, { passive: false });
       
       return () => {
-        canvas.removeEventListener('touchstart', handleTouchStart);
-        canvas.removeEventListener('touchend', handleTouchEnd);
+        document.removeEventListener('touchstart', handleTouchStart);
+        document.removeEventListener('touchmove', handleTouchMove);
+        document.removeEventListener('touchend', handleTouchEnd);
       };
     }
     
     return undefined;
-  }, [camera, gl, isGameOver, onShoot, raycaster, scene.children]);
+  }, [getNormalizedCoords, performRaycast]);
   
   return null;
 };
@@ -318,7 +280,7 @@ interface LetterProps {
   letter: LetterType;
   onShoot: (id: string) => void;
   isMuted?: boolean;
-  isTouchDevice?: boolean; // New prop for touch detection
+  isTouchDevice?: boolean;
 }
 
 const StarLetter = React.memo(({ letter, onShoot, isMuted = false, isTouchDevice = false }: LetterProps) => {
@@ -757,7 +719,7 @@ const AdaptiveCrosshair: React.FC = () => {
   
   return (
     <div 
-      className="fixed pointer-events-none z-50 transition-opacity duration-300"
+      className="fixed pointer-events-none z-40 transition-opacity duration-300"
       style={{
         left: mousePosition.x - crosshairSize/2,
         top: mousePosition.y - crosshairSize/2,
@@ -907,7 +869,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   }, []);
   
   // Enhanced shoot handler with improved visual feedback and touch support
-  const handleShoot = ({ 
+  const handleShoot = useCallback(({ 
     id, 
     point, 
     start 
@@ -961,38 +923,39 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       setPlayMissSound(true);
       setTimeout(() => setPlayMissSound(false), 50);
     }
-  };
+  }, [isGameOver, isTouchDevice, onShootLetter]);
   
   // Camera position calculation based on device orientation and type
-  const getCameraPosition = (): [number, number, number] => {
+  const getCameraPosition = useCallback((): [number, number, number] => {
     if (isTouchDevice) {
       // For touch devices, adjust camera position based on orientation
       if (isPortrait) {
-        return [0, 0, 12]; // Move camera further back in portrait for better view
+        return [0, 0, 13]; // Move camera even further back in portrait for better view
       } else {
-        return [0, 0, 11]; // Slightly closer in landscape
+        return [0, 0, 12]; // Slightly closer in landscape
       }
     } else {
       // Desktop default
       return [0, 0, 10];
     }
-  };
+  }, [isTouchDevice, isPortrait]);
   
   // OrbitControls settings calculation based on device type
-  const getOrbitControlsSettings = () => {
+  const getOrbitControlsSettings = useCallback(() => {
     if (isTouchDevice) {
       return {
         enableZoom: true,
         enableRotate: true,
-        minPolarAngle: Math.PI * 0.2, // Limit rotation more on mobile
-        maxPolarAngle: Math.PI * 0.8, // Limit rotation more on mobile
+        minPolarAngle: Math.PI * 0.25, // More limited rotation on mobile
+        maxPolarAngle: Math.PI * 0.75, // More limited rotation on mobile
         enablePan: true,
-        panSpeed: 0.5,
-        rotateSpeed: 0.5, // Slower rotation for more precision on touch
+        panSpeed: 0.4, // Slower pan for more control
+        rotateSpeed: 0.4, // Slower rotation for more control
         target: new THREE.Vector3(0, 0, -15),
         maxDistance: 18,
-        minDistance: 6,
+        minDistance: 7, // Increased min distance to prevent getting too close
         enabled: !isGameOver, // Disable controls when game is over
+        dampingFactor: 0.1, // Add damping for smoother control
       };
     } else {
       // Desktop default
@@ -1009,23 +972,28 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
         enabled: !isGameOver, // Disable controls when game is over
       };
     }
-  };
+  }, [isTouchDevice, isGameOver]);
   
   // Calculate pixel ratio limit based on device
-  const getPixelRatioLimit = () => {
+  const getPixelRatioLimit = useCallback(() => {
     // Limit pixel ratio more aggressively on touch devices
     return isTouchDevice ? 
       Math.min(window.devicePixelRatio, 1.5) : // Lower for mobile for better performance
       Math.min(window.devicePixelRatio, 2);    // Higher limit for desktop
-  };
+  }, [isTouchDevice]);
   
   // Orientation warning for mobile devices in portrait mode
   const OrientationWarning = () => {
     if (!isTouchDevice || !isPortrait) return null;
     
     return (
-      <div className="fixed bottom-28 left-0 right-0 mx-auto w-auto max-w-md px-4 py-2 bg-black/70 text-white text-center rounded-md z-50 backdrop-blur-sm">
-        <p>Rotate device to landscape for best experience</p>
+      <div className="fixed bottom-28 left-0 right-0 mx-auto w-auto max-w-md px-4 py-3 bg-black/80 text-white text-center rounded-md z-50 backdrop-blur-sm border border-yellow-500/30 shadow-[0_0_15px_rgba(255,215,0,0.3)]">
+        <p className="flex items-center justify-center gap-1">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-yellow-400">
+            <path fillRule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" />
+          </svg>
+          Rotate device to landscape for best experience
+        </p>
       </div>
     );
   };
@@ -1039,7 +1007,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       
       <Canvas 
         shadows 
-        camera={{ position: getCameraPosition(), fov: isTouchDevice ? 70 : 60 }}
+        camera={{ position: getCameraPosition(), fov: isTouchDevice ? 65 : 60 }}
         onCreated={({ gl }) => {
           // Force WebGL context optimization
           gl.setPixelRatio(getPixelRatioLimit());
@@ -1047,6 +1015,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           // Additional touch-specific optimizations
           if (isTouchDevice) {
             gl.shadowMap.enabled = false; // Disable shadows on mobile
+            gl.setClearColor(new THREE.Color('#000010')); // Set clear color for performance
           }
         }}
         gl={{
@@ -1055,6 +1024,12 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
           powerPreference: isTouchDevice ? 'low-power' : 'high-performance',
           stencil: false,            // Disable stencil buffer for performance
           depth: true,               // Keep depth buffer for 3D
+          preserveDrawingBuffer: false, // Improve performance
+        }}
+        style={{ 
+          // Give canvas a lower z-index than the HUD elements
+          position: 'absolute', 
+          zIndex: 10 
         }}
       >
         <Suspense fallback={null}>
@@ -1106,11 +1081,13 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             maxPolarAngle={orbitSettings.maxPolarAngle}
             enablePan={orbitSettings.enablePan}
             panSpeed={orbitSettings.panSpeed}
-            rotateSpeed={orbitSettings.rotateSpeed}
+            rotateSpeed={orbitSettings.rotateSpeed || 1}
             target={orbitSettings.target}
             maxDistance={orbitSettings.maxDistance}
             minDistance={orbitSettings.minDistance}
             enabled={orbitSettings.enabled}
+            dampingFactor={orbitSettings.dampingFactor || 0.05}
+            enableDamping={true}
           />
         </Suspense>
       </Canvas>

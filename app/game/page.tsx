@@ -5,23 +5,27 @@ import GameCanvas from '@/app/game/game-canvas';
 import Link from 'next/link';
 import { useGameState } from '@/hooks/use-game-state';
 import { GameDifficulty } from '@/lib/game-engine';
-import { Volume2, VolumeX } from 'lucide-react'; // Import icons for mute button
+import { Volume2, VolumeX, Home, Pause, Play } from 'lucide-react'; // Added more icons
 
 export default function GamePage() {
   const { 
     gameState, 
     isPaused, 
-    isMuted, // Get muted state
+    isMuted,
     shootLetter, 
     restartGame, 
     togglePause, 
-    toggleMute, // Get mute toggle function
+    toggleMute,
     changeDifficulty,
     cleanupGameLoop 
   } = useGameState('easy');
   
   // Game over modal visibility
   const [showGameOver, setShowGameOver] = useState(false);
+
+  // Device detection
+  const [isMobile, setIsMobile] = useState(false);
+  const [isPortrait, setIsPortrait] = useState(false);
   
   // Handle restart button
   const handleRestart = () => {
@@ -41,9 +45,25 @@ export default function GamePage() {
     }
   }, [gameState.isGameOver, showGameOver]);
   
-  // Clean up on unmount
+  // Detect device and orientation
   useEffect(() => {
+    const checkDevice = () => {
+      const mobile = window.innerWidth <= 768 || 
+                     'ontouchstart' in window || 
+                     navigator.maxTouchPoints > 0;
+      const portrait = window.innerHeight > window.innerWidth;
+      
+      setIsMobile(mobile);
+      setIsPortrait(portrait);
+    };
+    
+    checkDevice();
+    window.addEventListener('resize', checkDevice);
+    window.addEventListener('orientationchange', checkDevice);
+    
     return () => {
+      window.removeEventListener('resize', checkDevice);
+      window.removeEventListener('orientationchange', checkDevice);
       // Ensure cursor is reset when component unmounts
       document.body.style.cursor = 'auto';
     };
@@ -104,93 +124,90 @@ export default function GamePage() {
         letters={gameState.letters} 
         onShootLetter={shootLetter}
         isGameOver={gameState.isGameOver || showGameOver}
-        isMuted={isMuted} // Pass the mute state
+        isMuted={isMuted}
       />
       
-      {/* Game HUD Overlay */}
-      <div className="absolute inset-0 pointer-events-none z-10">
-        {/* HUD Elements - No Navbar */}
-        
-        {/* Game Stats and Controls - Repositioned to top right */}
-        <div className="absolute top-4 right-4 flex gap-3 flex-wrap justify-end pointer-events-auto">
-          {/* Score Display */}
-          <div className="bg-gray-900/70 backdrop-blur-md p-3 rounded-lg text-white border border-indigo-500/20 shadow-[0_0_15px_rgba(66,135,245,0.2)]">
-            <div className="text-sm opacity-80">Score</div>
-            <div className="text-2xl font-bold drop-shadow-[0_0_5px_rgba(66,135,245,0.8)]">{gameState.score}</div>
+      {/* Game HUD Overlay with improved mobile responsiveness */}
+      <div className="absolute inset-0 pointer-events-none z-20">
+        {/* Top HUD Row - Responsive layout for all device sizes */}
+        <div className="absolute top-0 left-0 right-0 flex justify-between items-start p-2 md:p-4 z-30">
+          {/* Controls - Left side */}
+          <div className="flex gap-1 md:gap-2 pointer-events-auto">
+            <button 
+              onClick={togglePause}
+              className="p-2 md:px-4 md:py-2 rounded-lg text-white transition-all duration-300 shadow-lg hover:shadow-[0_0_15px_rgba(66,135,245,0.5)] bg-black/50 backdrop-blur-sm md:text-base text-sm flex items-center gap-1 md:gap-2 border border-indigo-500/30"
+              aria-label={isPaused ? "Resume" : "Pause"}
+            >
+              {isPaused ? <Play className="w-4 h-4 md:w-5 md:h-5" /> : <Pause className="w-4 h-4 md:w-5 md:h-5" />}
+              <span className="hidden sm:inline">{isPaused ? "Resume" : "Pause"}</span>
+            </button>
+            
+            {/* Sound toggle button */}
+            <button 
+              onClick={toggleMute}
+              className="p-2 md:px-4 md:py-2 rounded-lg text-white transition-all duration-300 shadow-lg hover:shadow-[0_0_15px_rgba(66,135,245,0.5)] bg-black/50 backdrop-blur-sm flex items-center border border-indigo-500/30"
+              aria-label={isMuted ? "Unmute" : "Mute"}
+            >
+              {isMuted ? <VolumeX className="w-4 h-4 md:w-5 md:h-5" /> : <Volume2 className="w-4 h-4 md:w-5 md:h-5" />}
+            </button>
+            
+            {/* Home button */}
+            <Link href="/">
+              <button 
+                className="p-2 md:px-4 md:py-2 rounded-lg text-white transition-all duration-300 shadow-lg hover:shadow-[0_0_15px_rgba(66,135,245,0.5)] bg-black/50 backdrop-blur-sm flex items-center border border-indigo-500/30"
+                onClick={() => {
+                  cleanupGameLoop();
+                  document.body.style.cursor = 'auto';
+                  clearPendingTimeouts();
+                }}
+                aria-label="Exit to Home"
+              >
+                <Home className="w-4 h-4 md:w-5 md:h-5" />
+                <span className="hidden sm:inline ml-1">Exit</span>
+              </button>
+            </Link>
           </div>
           
-          {/* Lives Display */}
-          <div className="bg-gray-900/70 backdrop-blur-md p-3 rounded-lg text-white border border-indigo-500/20 shadow-[0_0_15px_rgba(66,135,245,0.2)]">
-            <div className="text-sm opacity-80">Lives</div>
-            <div className="text-2xl font-bold flex">
-              {Array.from({ length: gameState.lives }).map((_, i) => (
-                <span key={i} className="text-purple-400 mr-1 drop-shadow-[0_0_5px_rgba(66,135,245,0.8)]">★</span>
-              ))}
+          {/* Game Stats - Right side with dynamic sizing */}
+          <div className="flex gap-1 md:gap-3 flex-wrap justify-end pointer-events-auto">
+            {/* Score Display */}
+            <div className="bg-black/50 backdrop-blur-sm p-2 md:p-3 rounded-lg text-white border border-indigo-500/30 shadow-[0_0_15px_rgba(66,135,245,0.2)]">
+              <div className="text-xs md:text-sm opacity-80">Score</div>
+              <div className="text-lg md:text-2xl font-bold drop-shadow-[0_0_5px_rgba(66,135,245,0.8)]">{gameState.score}</div>
+            </div>
+            
+            {/* Lives Display */}
+            <div className="bg-black/50 backdrop-blur-sm p-2 md:p-3 rounded-lg text-white border border-indigo-500/30 shadow-[0_0_15px_rgba(66,135,245,0.2)]">
+              <div className="text-xs md:text-sm opacity-80">Lives</div>
+              <div className="text-lg md:text-2xl font-bold flex">
+                {Array.from({ length: gameState.lives }).map((_, i) => (
+                  <span key={i} className="text-purple-400 mr-0.5 md:mr-1 drop-shadow-[0_0_5px_rgba(66,135,245,0.8)]">★</span>
+                ))}
+              </div>
+            </div>
+            
+            {/* Timer Display */}
+            <div className="bg-black/50 backdrop-blur-sm p-2 md:p-3 rounded-lg text-white border border-indigo-500/30 shadow-[0_0_15px_rgba(66,135,245,0.2)]">
+              <div className="text-xs md:text-sm opacity-80">Time</div>
+              <div className="text-lg md:text-2xl font-bold drop-shadow-[0_0_5px_rgba(66,135,245,0.8)]">{Math.ceil(gameState.timeRemaining)}s</div>
             </div>
           </div>
-          
-          {/* Timer Display */}
-          <div className="bg-gray-900/70 backdrop-blur-md p-3 rounded-lg text-white border border-indigo-500/20 shadow-[0_0_15px_rgba(66,135,245,0.2)]">
-            <div className="text-sm opacity-80">Time</div>
-            <div className="text-2xl font-bold drop-shadow-[0_0_5px_rgba(66,135,245,0.8)]">{Math.ceil(gameState.timeRemaining)}s</div>
-          </div>
-        </div>
-
-        {/* Controls - Repositioned to top left */}
-        <div className="absolute top-4 left-4 flex gap-2 pointer-events-auto">
-          <button 
-            onClick={togglePause}
-            className={`px-4 py-2 rounded-lg text-white transition-all duration-300 shadow-lg hover:shadow-[0_0_15px_rgba(66,135,245,0.5)] ${
-              isPaused 
-                ? 'bg-gradient-to-r from-purple-700 to-purple-600' 
-                : 'bg-gradient-to-r from-indigo-700 to-blue-600'
-            }`}
-          >
-            {isPaused ? "Resume" : "Pause"}
-          </button>
-          
-          {/* Add the mute button */}
-          <button 
-            onClick={toggleMute}
-            className="px-4 py-2 rounded-lg text-white transition-all duration-300 shadow-lg hover:shadow-[0_0_15px_rgba(66,135,245,0.5)] bg-gradient-to-r from-gray-700 to-gray-600"
-            aria-label={isMuted ? "Unmute" : "Mute"}
-          >
-            {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-          </button>
-          
-          <Link href="/">
-            <button 
-              className="px-4 py-2 rounded-lg bg-gray-800 text-white border border-indigo-500/30"
-              onClick={() => {
-                // Only clean up game-specific animations
-                cleanupGameLoop();
-                
-                // Reset cursor style before navigation
-                document.body.style.cursor = 'auto';
-                
-                // Clear any running timeouts
-                clearPendingTimeouts();
-              }}
-            >
-              Exit
-            </button>
-          </Link>
         </div>
         
-        {/* Target Word Display (Center Top) */}
-        <div className="absolute top-20 left-1/2 transform -translate-x-1/2 bg-gray-900/70 backdrop-blur-md px-6 py-3 rounded-full pointer-events-auto border border-indigo-500/20 shadow-[0_0_15px_rgba(66,135,245,0.2)]">
+        {/* Target Word Display (Center Top) - Responsive size and position */}
+        <div className={`absolute transform -translate-x-1/2 bg-black/60 backdrop-blur-md px-3 py-2 md:px-6 md:py-3 rounded-full pointer-events-auto border border-indigo-500/20 shadow-[0_0_15px_rgba(66,135,245,0.2)] z-30 ${isMobile ? "top-16 left-1/2" : "top-20 left-1/2"}`}>
           <div className="text-center">
-            <h2 className="text-xl font-bold text-white drop-shadow-[0_0_5px_rgba(66,135,245,0.8)]">Target: {gameState.targetWord}</h2>
+            <h2 className="text-base md:text-xl font-bold text-white drop-shadow-[0_0_5px_rgba(66,135,245,0.8)]">Target: {gameState.targetWord}</h2>
           </div>
         </div>
         
-        {/* Current Progress (Bottom Center) - FIXED CENTERING */}
-        <div className="absolute bottom-8 left-0 right-0 mx-auto w-auto max-w-md bg-gray-900/70 backdrop-blur-md p-4 rounded-lg pointer-events-auto border border-indigo-500/20 shadow-[0_0_15px_rgba(66,135,245,0.2)]">
-          <div className="flex gap-2 justify-center items-center">
+        {/* Current Progress (Bottom Center) - Adaptive sizing & positioning */}
+        <div className={`absolute left-0 right-0 mx-auto w-auto max-w-md bg-black/60 backdrop-blur-md p-2 md:p-4 rounded-lg pointer-events-auto border border-indigo-500/20 shadow-[0_0_15px_rgba(66,135,245,0.2)] z-30 ${isMobile && isPortrait ? "bottom-20" : "bottom-8"}`}>
+          <div className="flex gap-1 md:gap-2 justify-center items-center">
             {gameState.targetWord.split('').map((letter, index) => (
               <span 
                 key={index} 
-                className={`flex items-center justify-center w-12 h-12 rounded-md text-xl font-bold ${
+                className={`flex items-center justify-center w-8 h-8 md:w-12 md:h-12 rounded-md text-base md:text-xl font-bold ${
                   index < gameState.currentWord.length 
                     ? 'bg-indigo-600 text-white drop-shadow-[0_0_5px_rgba(66,135,245,0.8)]' 
                     : 'bg-gray-800/70 text-white/50'
@@ -202,12 +219,12 @@ export default function GamePage() {
           </div>
         </div>
         
-        {/* Difficulty Controls (Bottom Right) */}
-        <div className="absolute bottom-8 right-8 bg-gray-900/70 backdrop-blur-md p-3 rounded-lg pointer-events-auto border border-indigo-500/20 shadow-[0_0_15px_rgba(66,135,245,0.2)]">
-          <div className="flex space-x-2">
+        {/* Difficulty Controls - Repositioned for mobile */}
+        <div className={`absolute bg-black/60 backdrop-blur-md p-2 md:p-3 rounded-lg pointer-events-auto border border-indigo-500/20 shadow-[0_0_15px_rgba(66,135,245,0.2)] z-30 ${isMobile && isPortrait ? "bottom-4 left-0 right-0 mx-auto w-fit" : "bottom-8 right-4 md:right-8"}`}>
+          <div className="flex space-x-1 md:space-x-2">
             <button 
               onClick={() => handleDifficultyChange('easy')}
-              className={`px-3 py-1 rounded text-sm ${
+              className={`px-2 py-1 md:px-3 md:py-1 rounded text-xs md:text-sm ${
                 gameState.difficulty === 'easy' 
                   ? 'bg-indigo-600 text-white drop-shadow-[0_0_5px_rgba(66,135,245,0.8)]' 
                   : 'bg-gray-800 text-white'
@@ -217,7 +234,7 @@ export default function GamePage() {
             </button>
             <button 
               onClick={() => handleDifficultyChange('medium')}
-              className={`px-3 py-1 rounded text-sm ${
+              className={`px-2 py-1 md:px-3 md:py-1 rounded text-xs md:text-sm ${
                 gameState.difficulty === 'medium' 
                   ? 'bg-purple-600 text-white drop-shadow-[0_0_5px_rgba(168,85,247,0.8)]' 
                   : 'bg-gray-800 text-white'
@@ -227,7 +244,7 @@ export default function GamePage() {
             </button>
             <button 
               onClick={() => handleDifficultyChange('hard')}
-              className={`px-3 py-1 rounded text-sm ${
+              className={`px-2 py-1 md:px-3 md:py-1 rounded text-xs md:text-sm ${
                 gameState.difficulty === 'hard' 
                   ? 'bg-pink-600 text-white drop-shadow-[0_0_5px_rgba(236,72,153,0.8)]' 
                   : 'bg-gray-800 text-white'
@@ -239,19 +256,19 @@ export default function GamePage() {
         </div>
       </div>
       
-      {/* Game Over Modal */}
+      {/* Game Over Modal - Improved for mobile */}
       {showGameOver && (
         <div className="fixed inset-0 bg-indigo-950/80 backdrop-blur-md flex items-center justify-center z-50">
-          <div className="bg-gray-900/70 backdrop-blur-md p-8 rounded-xl max-w-md w-full text-white border border-indigo-500/20 shadow-[0_0_15px_rgba(66,135,245,0.2)]">
-            <h2 className="text-3xl font-bold mb-4 drop-shadow-[0_0_5px_rgba(66,135,245,0.8)]">Mission Complete</h2>
-            <p className="mb-6 text-xl">
+          <div className="bg-gray-900/70 backdrop-blur-md p-4 md:p-8 rounded-xl max-w-md w-full mx-4 text-white border border-indigo-500/20 shadow-[0_0_15px_rgba(66,135,245,0.2)]">
+            <h2 className="text-2xl md:text-3xl font-bold mb-2 md:mb-4 drop-shadow-[0_0_5px_rgba(66,135,245,0.8)]">Mission Complete</h2>
+            <p className="mb-4 md:mb-6 text-lg md:text-xl">
               Your final score: <span className="font-bold text-blue-400 drop-shadow-[0_0_5px_rgba(66,135,245,0.8)]">{gameState.score}</span>
             </p>
             
-            <div className="flex justify-end space-x-4">
+            <div className="flex justify-end space-x-2 md:space-x-4">
               <Link href="/">
                 <button 
-                  className="px-4 py-2 rounded-lg bg-gray-800 text-white border border-indigo-500/30"
+                  className="px-3 py-2 md:px-4 md:py-2 rounded-lg bg-gray-800 text-white border border-indigo-500/30"
                   onClick={() => {
                     // Clean up before navigation
                     cleanupGameLoop();
@@ -264,7 +281,7 @@ export default function GamePage() {
               </Link>
               <button 
                 onClick={handleRestart}
-                className="px-4 py-2 rounded-lg text-white transition-all duration-300 bg-gradient-to-r from-indigo-700 to-blue-600 shadow-lg hover:shadow-[0_0_15px_rgba(66,135,245,0.5)] hover:from-indigo-800 hover:to-blue-700"
+                className="px-3 py-2 md:px-4 md:py-2 rounded-lg text-white transition-all duration-300 bg-gradient-to-r from-indigo-700 to-blue-600 shadow-lg hover:shadow-[0_0_15px_rgba(66,135,245,0.5)] hover:from-indigo-800 hover:to-blue-700"
               >
                 Play Again
               </button>

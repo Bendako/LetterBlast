@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react';
 
 interface MissedShotSoundProps {
   play: boolean;
-  isMuted?: boolean; // New prop
+  isMuted?: boolean;
 }
 
 export default function MissedShotSound({ play, isMuted = false }: MissedShotSoundProps) {
@@ -13,6 +13,7 @@ export default function MissedShotSound({ play, isMuted = false }: MissedShotSou
     context?: AudioContext | null;
     oscillator?: OscillatorNode | null;
     gainNode?: GainNode | null;
+    filter?: BiquadFilterNode | null; // Added filter for better sound effects
   }>({});
   
   // Track component mount state
@@ -43,6 +44,15 @@ export default function MissedShotSound({ play, isMuted = false }: MissedShotSou
         audioNodesRef.current.gainNode = null;
       }
       
+      if (audioNodesRef.current.filter) {
+        try {
+          audioNodesRef.current.filter.disconnect();
+        } catch {
+          // Ignore disconnect errors
+        }
+        audioNodesRef.current.filter = null;
+      }
+      
       if (audioNodesRef.current.context) {
         try {
           if (audioNodesRef.current.context.state !== 'closed') {
@@ -66,44 +76,66 @@ export default function MissedShotSound({ play, isMuted = false }: MissedShotSou
         const audioContext = new AudioContextClass();
         audioNodesRef.current.context = audioContext;
         
-        // Configure sound for missed shot - higher pitch, shorter duration
+        // Configure sound for missed shot - improved characteristics
         const oscillator = audioContext.createOscillator();
         const gainNode = audioContext.createGain();
+        const filter = audioContext.createBiquadFilter();
         
         audioNodesRef.current.oscillator = oscillator;
         audioNodesRef.current.gainNode = gainNode;
+        audioNodesRef.current.filter = filter;
         
-        // Use different parameters for a "miss" sound
-        // Higher pitch, shorter duration than hit sound
-        oscillator.type = 'sine';
+        // Higher pitch, shorter duration, better filter for missed shot sound
+        oscillator.type = 'sawtooth'; // More distinct sound
         oscillator.frequency.setValueAtTime(480, audioContext.currentTime);
-        oscillator.frequency.exponentialRampToValueAtTime(100, audioContext.currentTime + 0.2);
+        oscillator.frequency.exponentialRampToValueAtTime(120, audioContext.currentTime + 0.2);
         
-        // Lower volume than hit sound
-        gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+        // Add a slight wobble for a more "error" sound
+        const wobbleAmount = 20;
+        for (let i = 0; i < 4; i++) {
+          const time = audioContext.currentTime + (i * 0.05);
+          const direction = i % 2 === 0 ? 1 : -1;
+          oscillator.frequency.setValueAtTime(
+            480 - (i * 80) + (direction * wobbleAmount), 
+            time
+          );
+        }
+        
+        // Filter setup for sharper sound
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(500, audioContext.currentTime);
+        filter.Q.value = 2;
+        
+        // Lower volume to prevent jarring sound
+        gainNode.gain.setValueAtTime(0.18, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
         
         // Connect and play
-        oscillator.connect(gainNode);
+        oscillator.connect(filter);
+        filter.connect(gainNode);
         gainNode.connect(audioContext.destination);
         
         oscillator.start();
-        oscillator.stop(audioContext.currentTime + 0.2);
+        oscillator.stop(audioContext.currentTime + 0.3);
         
         // Schedule cleanup after sound is finished
         setTimeout(() => {
           if (isMountedRef.current) {
             try {
               oscillator.disconnect();
+              filter.disconnect();
               gainNode.disconnect();
               
-              // Don't close the context here as it might be reused
+              if (audioContext.state !== 'closed') {
+                audioContext.close().catch(() => {}); // Safe closing
+              }
+              
               audioNodesRef.current = {};
             } catch {
               // Ignore cleanup errors
             }
           }
-        }, 300); // Slightly longer than the sound duration
+        }, 400); // Slightly longer than the sound duration
         
       } catch (error) {
         console.error("Error playing missed shot sound:", error);
@@ -112,8 +144,6 @@ export default function MissedShotSound({ play, isMuted = false }: MissedShotSou
     
     return () => {
       // This cleanup runs when the play prop changes
-      // We don't do immediate cleanup here as it might interrupt the sound
-      // The setTimeout above handles the proper cleanup timing
     };
   }, [play, isMuted]);
   
