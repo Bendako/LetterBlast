@@ -12,7 +12,7 @@ import LaserBeam from '@/components/LaserBeam';
 // Type definition for missed shot sound props
 interface MissedShotSoundProps {
   play: boolean;
-  isMuted?: boolean; // New prop for mute support
+  isMuted?: boolean;
 }
 
 // Add a missed shot sound component
@@ -143,68 +143,108 @@ const MissEffect: React.FC<MissEffectProps> = ({ position }) => {
 // Type definition for Raycaster props
 interface RaycasterProps {
   onShoot: (data: { id: string | null; point: THREE.Vector3; start: THREE.Vector3 }) => void;
+  isGameOver: boolean;
 }
 
-// Raycaster for detecting 3D object clicks
-const Raycaster: React.FC<RaycasterProps> = ({ onShoot }) => {
+// Enhanced raycaster for both mouse and touch events
+const Raycaster: React.FC<RaycasterProps> = ({ onShoot, isGameOver }) => {
   const { camera, gl, scene } = useThree();
   const raycaster = useMemo(() => new THREE.Raycaster(), []);
   const mouse = useMemo(() => new THREE.Vector2(), []);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const isTouchDevice = useRef(false);
+  const lastShootTime = useRef(0);
   
+  // Detect if device supports touch events
   useEffect(() => {
-    const handleClick = (event: MouseEvent) => {
-      // Calculate mouse position in normalized device coordinates
-      mouse.x = (event.clientX / gl.domElement.clientWidth) * 2 - 1;
-      mouse.y = -(event.clientY / gl.domElement.clientHeight) * 2 + 1;
-      
-      // Update the picking ray with the camera and mouse position
-      raycaster.setFromCamera(mouse, camera);
-      
-      // Calculate objects intersecting the picking ray
-      const intersects = raycaster.intersectObjects(scene.children, true);
-      
-      if (intersects.length > 0) {
-        // Find the closest object that has userData.letterId
-        for (const intersect of intersects) {
-          let obj = intersect.object;
-          
-          // Traverse up to find an object with letterId
-          while (obj && !obj.userData.letterId) {
-            if (obj.parent) {
-              obj = obj.parent;
-            } else {
-              break;
-            }
-          }
-          
-          if (obj && obj.userData.letterId) {
-            // Create a laser beam from camera to hit point
-            const start = new THREE.Vector3(0, 0, 5).applyMatrix4(camera.matrixWorld);
-            onShoot({
-              id: obj.userData.letterId,
-              point: intersect.point,
-              start,
-            });
+    isTouchDevice.current = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  }, []);
+  
+  // Normalized coordinate calculation from screen position
+  const getNormalizedCoords = (clientX: number, clientY: number) => {
+    return {
+      x: (clientX / gl.domElement.clientWidth) * 2 - 1,
+      y: -(clientY / gl.domElement.clientHeight) * 2 + 1
+    };
+  };
+  
+  // Perform ray casting and shooting logic
+  const performRaycast = (normalizedX: number, normalizedY: number) => {
+    if (isGameOver) return;
+    
+    // Rate limit shooting to prevent accidental rapid taps/clicks
+    const now = Date.now();
+    if (now - lastShootTime.current < 150) return;
+    lastShootTime.current = now;
+    
+    // Set ray coordinates
+    mouse.x = normalizedX;
+    mouse.y = normalizedY;
+    
+    // Update the picking ray
+    raycaster.setFromCamera(mouse, camera);
+    
+    // Calculate objects intersecting the picking ray
+    const intersects = raycaster.intersectObjects(scene.children, true);
+    
+    if (intersects.length > 0) {
+      // Find the closest object that has userData.letterId
+      for (const intersect of intersects) {
+        let obj = intersect.object;
+        
+        // Traverse up to find an object with letterId
+        while (obj && !obj.userData.letterId) {
+          if (obj.parent) {
+            obj = obj.parent;
+          } else {
             break;
           }
         }
-      } else {
-        // Shot missed all letters - provide feedback for missed shot
-        const start = new THREE.Vector3(0, 0, 5).applyMatrix4(camera.matrixWorld);
         
-        // Get point far in the distance along ray direction
-        const direction = raycaster.ray.direction.clone();
-        const farPoint = new THREE.Vector3().addVectors(
-          start, 
-          direction.multiplyScalar(100)
-        );
-        
-        onShoot({
-          id: null,
-          point: farPoint,
-          start,
-        });
+        if (obj && obj.userData.letterId) {
+          // Create a laser beam from camera to hit point
+          const start = new THREE.Vector3(0, 0, 5).applyMatrix4(camera.matrixWorld);
+          onShoot({
+            id: obj.userData.letterId,
+            point: intersect.point,
+            start,
+          });
+          
+          // Add haptic feedback for touch devices
+          if (isTouchDevice.current && navigator.vibrate) {
+            navigator.vibrate(25);
+          }
+          
+          break;
+        }
       }
+    } else {
+      // Shot missed all letters - provide feedback for missed shot
+      const start = new THREE.Vector3(0, 0, 5).applyMatrix4(camera.matrixWorld);
+      
+      // Get point far in the distance along ray direction
+      const direction = raycaster.ray.direction.clone();
+      const farPoint = new THREE.Vector3().addVectors(
+        start, 
+        direction.multiplyScalar(100)
+      );
+      
+      onShoot({
+        id: null,
+        point: farPoint,
+        start,
+      });
+    }
+  };
+  
+  // Mouse event handlers
+  useEffect(() => {
+    const handleClick = (event: MouseEvent) => {
+      // Skip if this is a touch device - we'll use touch events instead
+      if (isTouchDevice.current) return;
+      
+      const coords = getNormalizedCoords(event.clientX, event.clientY);
+      performRaycast(coords.x, coords.y);
     };
     
     gl.domElement.addEventListener('click', handleClick);
@@ -212,7 +252,63 @@ const Raycaster: React.FC<RaycasterProps> = ({ onShoot }) => {
     return () => {
       gl.domElement.removeEventListener('click', handleClick);
     };
-  }, [camera, gl, mouse, onShoot, raycaster, scene.children]);
+  }, [camera, gl, isGameOver, onShoot, raycaster, scene.children]);
+  
+  // Touch event handlers
+  useEffect(() => {
+    const handleTouchStart = (event: TouchEvent) => {
+      if (event.touches.length !== 1) return;
+      
+      // Store initial touch position for potential drag detection
+      touchStartRef.current = {
+        x: event.touches[0].clientX,
+        y: event.touches[0].clientY
+      };
+      
+      // Prevent default to avoid scrolling/zooming
+      event.preventDefault();
+    };
+    
+    const handleTouchEnd = (event: TouchEvent) => {
+      // Only process if we have a valid touch start position
+      if (!touchStartRef.current) return;
+      
+      // Get the position of the touch end or use the last touch start position
+      const touchEndX = event.changedTouches[0]?.clientX || touchStartRef.current.x;
+      const touchEndY = event.changedTouches[0]?.clientY || touchStartRef.current.y;
+      
+      // Calculate distance from start to detect if this was a tap vs. a drag
+      const distanceX = touchEndX - touchStartRef.current.x;
+      const distanceY = touchEndY - touchStartRef.current.y;
+      const dragDistance = Math.sqrt(distanceX * distanceX + distanceY * distanceY);
+      
+      // If drag distance is small enough, consider it a tap/shoot
+      if (dragDistance < 20) {
+        const coords = getNormalizedCoords(touchEndX, touchEndY);
+        performRaycast(coords.x, coords.y);
+      }
+      
+      // Reset touch start ref
+      touchStartRef.current = null;
+      
+      // Prevent default to avoid any unwanted behaviors
+      event.preventDefault();
+    };
+    
+    // Add touch event listeners only if this is a touch device
+    if (isTouchDevice.current) {
+      const canvas = gl.domElement;
+      canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+      canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+      
+      return () => {
+        canvas.removeEventListener('touchstart', handleTouchStart);
+        canvas.removeEventListener('touchend', handleTouchEnd);
+      };
+    }
+    
+    return undefined;
+  }, [camera, gl, isGameOver, onShoot, raycaster, scene.children]);
   
   return null;
 };
@@ -221,10 +317,11 @@ const Raycaster: React.FC<RaycasterProps> = ({ onShoot }) => {
 interface LetterProps {
   letter: LetterType;
   onShoot: (id: string) => void;
-  isMuted?: boolean; // New prop for mute support
+  isMuted?: boolean;
+  isTouchDevice?: boolean; // New prop for touch detection
 }
 
-const StarLetter = React.memo(({ letter, onShoot, isMuted = false }: LetterProps) => {
+const StarLetter = React.memo(({ letter, onShoot, isMuted = false, isTouchDevice = false }: LetterProps) => {
   const { id, character, position, color, active } = letter;
   
   // State for explosion effects
@@ -264,6 +361,9 @@ const StarLetter = React.memo(({ letter, onShoot, isMuted = false }: LetterProps
 
   // When a letter is hit directly (not through raycasting)
   const handleClick = (event: React.MouseEvent) => {
+    // On touch devices, we rely on the raycaster for better hit detection
+    if (isTouchDevice) return;
+    
     // Stop propagation to prevent double-firing of events
     event.stopPropagation();
     
@@ -327,12 +427,16 @@ const StarLetter = React.memo(({ letter, onShoot, isMuted = false }: LetterProps
   const b = parseInt(trailColor.substring(4, 6), 16);
   const darkerTrailColor = `#${Math.floor(r * 0.4).toString(16).padStart(2, '0')}${Math.floor(g * 0.4).toString(16).padStart(2, '0')}${Math.floor(b * 0.4).toString(16).padStart(2, '0')}`;
 
+  // Add touch-friendly scaling for mobile
+  const letterScale = isTouchDevice ? 1.3 : 1.0; // Larger on touch devices
+
   return (
     <group 
       ref={groupRef}
       position={position}
       onClick={handleClick}
       userData={{ letterId: id }} // Add letterId to userData for raycasting
+      scale={[letterScale, letterScale, letterScale]}
     >
       {/* Comet Trail */}
       <mesh 
@@ -400,7 +504,7 @@ const LowDetailSpaceEnvironment: React.FC = () => {
       <Stars 
         radius={100}
         depth={50}
-        count={1000} // Reduced from 5000
+        count={800} // Further reduced from 1000 for mobile
         factor={3}
         saturation={0}
         fade
@@ -468,7 +572,7 @@ const HighDetailSpaceEnvironment: React.FC = () => {
   );
 };
 
-// Adaptive space environment that checks device capabilities
+// Improved adaptive space environment that considers more device factors
 const AdaptiveSpaceEnvironment: React.FC = () => {
   // Use state to track if device is high-end or low-end
   const [isHighPerformance, setIsHighPerformance] = useState<boolean>(true);
@@ -478,63 +582,191 @@ const AdaptiveSpaceEnvironment: React.FC = () => {
     // Setup unmounted flag
     isUnmountedRef.current = false;
     
-    // Check device performance
+    // More comprehensive device performance check
     const checkPerformance = () => {
-      // Simple check based on device pixel ratio and supported features
-      const isLowEnd = 
-        window.devicePixelRatio < 2 || 
-        navigator.hardwareConcurrency < 4 || 
-        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      // Performance factors to consider
+      const pixelRatio = window.devicePixelRatio || 1;
+      const cpuCores = navigator.hardwareConcurrency || 4;
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      const screenSize = window.innerWidth * window.innerHeight;
+      const isSmallScreen = screenSize < 500000; // Roughly a 800x600 screen
       
+      // Combined scoring system for performance determination
+      let performanceScore = 0;
+      
+      if (pixelRatio >= 2) performanceScore += 1;
+      if (cpuCores >= 4) performanceScore += 1;
+      if (!isMobile) performanceScore += 2;
+      if (!isSmallScreen) performanceScore += 1;
+      
+      // Check for GPU blacklist or performance issues in the browser
+      let gpuLimitations = false;
+      try {
+        const canvas = document.createElement('canvas');
+        // Specifically request WebGL context
+        const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl') as WebGLRenderingContext | null;
+        if (!gl) {
+          gpuLimitations = true;
+        } else {
+          // Only try to access debug info if gl is available
+          const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+          if (debugInfo) {
+            const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+            // Check for known low-performance GPUs (simplified)
+            if (typeof renderer === 'string' && renderer.includes('Intel') && !renderer.includes('Iris')) {
+              performanceScore -= 1;
+            }
+          }
+        }
+      } catch {
+        gpuLimitations = true;
+      }
+      
+      if (gpuLimitations) performanceScore -= 1;
+      
+      // Memory considerations - if we can detect it
+      if ('deviceMemory' in navigator) {
+        const memory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory || 4;
+        if (memory < 4) performanceScore -= 1;
+      }
+      
+      // Battery considerations without using the Battery API directly
+      // Check if browser has low-power mode or similar indicators
+      const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (prefersReducedMotion) {
+        performanceScore -= 1;
+      }
+      
+      // Make determination
+      determinePerformance(performanceScore);
+    };
+    
+    const determinePerformance = (score: number) => {
       if (!isUnmountedRef.current) {
-        setIsHighPerformance(!isLowEnd);
+        setIsHighPerformance(score >= 2); // Threshold for high performance
       }
     };
     
     checkPerformance();
     
+    // Detect orientation changes or resizes
+    const handleResize = () => {
+      if (!isUnmountedRef.current) {
+        checkPerformance();
+      }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
+    
     // Clean up
     return () => {
       isUnmountedRef.current = true;
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleResize);
     };
   }, []);
   
   return isHighPerformance ? <HighDetailSpaceEnvironment /> : <LowDetailSpaceEnvironment />;
 };
 
-// Crosshair component with space theme using Tailwind
-const SpaceCrosshair: React.FC = () => {
+// Touch-friendly crosshair component that adapts to different devices
+const AdaptiveCrosshair: React.FC = () => {
   const [mousePosition, setMousePosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
+  const [isActive, setIsActive] = useState(true);
   const isUnmountedRef = useRef<boolean>(false);
+  const activeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   useEffect(() => {
     isUnmountedRef.current = false;
     
+    // Check if this is a touch device
+    setIsTouchDevice('ontouchstart' in window || navigator.maxTouchPoints > 0);
+    
     const handleMouseMove = (event: MouseEvent) => {
       if (!isUnmountedRef.current) {
         setMousePosition({ x: event.clientX, y: event.clientY });
+        setIsActive(true);
+        
+        // Hide crosshair after 3 seconds of inactivity on desktop
+        if (activeTimeoutRef.current) {
+          clearTimeout(activeTimeoutRef.current);
+        }
+        
+        activeTimeoutRef.current = setTimeout(() => {
+          if (!isUnmountedRef.current) {
+            setIsActive(false);
+          }
+        }, 3000);
       }
     };
     
-    window.addEventListener('mousemove', handleMouseMove);
+    const handleTouchMove = (event: TouchEvent) => {
+      if (!isUnmountedRef.current && event.touches.length === 1) {
+        setMousePosition({ 
+          x: event.touches[0].clientX, 
+          y: event.touches[0].clientY 
+        });
+        setIsActive(true);
+        
+        // Keep crosshair visible for touch devices, but fade out after 1s
+        if (activeTimeoutRef.current) {
+          clearTimeout(activeTimeoutRef.current);
+        }
+        
+        activeTimeoutRef.current = setTimeout(() => {
+          if (!isUnmountedRef.current) {
+            setIsActive(false);
+          }
+        }, 1000);
+      }
+    };
+    
+    // Register different event handlers based on device type
+    if (isTouchDevice) {
+      window.addEventListener('touchmove', handleTouchMove);
+      window.addEventListener('touchstart', handleTouchMove);
+    } else {
+      window.addEventListener('mousemove', handleMouseMove);
+    }
     
     return () => {
       isUnmountedRef.current = true;
-      window.removeEventListener('mousemove', handleMouseMove);
+      
+      if (activeTimeoutRef.current) {
+        clearTimeout(activeTimeoutRef.current);
+      }
+      
+      if (isTouchDevice) {
+        window.removeEventListener('touchmove', handleTouchMove);
+        window.removeEventListener('touchstart', handleTouchMove);
+      } else {
+        window.removeEventListener('mousemove', handleMouseMove);
+      }
     };
-  }, []);
+  }, [isTouchDevice]);
+  
+  // Size adjustments based on device type
+  const crosshairSize = isTouchDevice ? 72 : 64; // Larger on touch devices
+  const crosshairOpacity = isActive ? 0.6 : 0; // Fade based on activity state
+  
+  if (!isActive && !isTouchDevice) {
+    return null; // Hide completely when inactive on desktop
+  }
   
   return (
     <div 
-      className="fixed pointer-events-none z-50"
+      className="fixed pointer-events-none z-50 transition-opacity duration-300"
       style={{
-        left: mousePosition.x - 32,
-        top: mousePosition.y - 32,
-        width: '64px',
-        height: '64px'
+        left: mousePosition.x - crosshairSize/2,
+        top: mousePosition.y - crosshairSize/2,
+        width: `${crosshairSize}px`,
+        height: `${crosshairSize}px`,
+        opacity: crosshairOpacity
       }}
     >
-      {/* Outer ring */}
+      {/* Outer ring - adapted for visibility on both dark and light backgrounds */}
       <div className="absolute inset-0 border-2 border-blue-400 rounded-full opacity-80 animate-pulse"></div>
       
       {/* Horizontal line */}
@@ -544,7 +776,12 @@ const SpaceCrosshair: React.FC = () => {
       <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-blue-400 opacity-80"></div>
       
       {/* Center dot */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1 h-1 rounded-full bg-white opacity-100 animate-pulse"></div>
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-white opacity-100 animate-pulse"></div>
+      
+      {/* Touch-specific inner circle for touch devices */}
+      {isTouchDevice && (
+        <div className="absolute inset-1/4 border border-white/50 rounded-full"></div>
+      )}
     </div>
   );
 };
@@ -564,7 +801,7 @@ interface GameCanvasProps {
   letters: LetterType[];
   onShootLetter: (id: string) => void;
   isGameOver: boolean;
-  isMuted: boolean; // New prop for mute support
+  isMuted: boolean;
 }
 
 // Type for laser beam state object
@@ -583,7 +820,7 @@ interface MissEffect {
   timestamp: number;
 }
 
-// Game canvas component that contains the 3D scene with space theme
+// Enhanced Game canvas component with responsive design for all screen sizes
 const GameCanvas: React.FC<GameCanvasProps> = ({ 
   letters, 
   onShootLetter, 
@@ -598,6 +835,30 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   const [laserBeams, setLaserBeams] = useState<LaserBeam[]>([]);
   const [missEffects, setMissEffects] = useState<MissEffect[]>([]);
   const [playMissSound, setPlayMissSound] = useState<boolean>(false);
+  
+  // Device capability detection
+  const [isTouchDevice, setIsTouchDevice] = useState<boolean>(false);
+  const [isPortrait, setIsPortrait] = useState<boolean>(false);
+  
+  // Detect device capabilities and orientation
+  useEffect(() => {
+    setIsTouchDevice('ontouchstart' in window || navigator.maxTouchPoints > 0);
+    setIsPortrait(window.innerHeight > window.innerWidth);
+    
+    const handleResize = () => {
+      if (!isUnmountedRef.current) {
+        setIsPortrait(window.innerHeight > window.innerWidth);
+      }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleResize);
+    };
+  }, []);
   
   // Memoize letters to prevent unnecessary re-renders
   const memoizedLetters = useMemo(() => letters, [letters]);
@@ -617,8 +878,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   useEffect(() => {
     isUnmountedRef.current = false;
     
-    // Only hide the cursor if the game is not over
-    if (!isGameOver) {
+    // Only hide the cursor if the game is not over and not on a touch device
+    if (!isGameOver && !isTouchDevice) {
       document.body.style.cursor = 'none';
     } else {
       document.body.style.cursor = 'auto';
@@ -628,7 +889,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       isUnmountedRef.current = true;
       document.body.style.cursor = 'auto';
     };
-  }, [isGameOver]); 
+  }, [isGameOver, isTouchDevice]); 
   
   // Handle scene load complete with cleanup for timeouts
   useEffect(() => {
@@ -645,7 +906,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     };
   }, []);
   
-  // Enhanced shoot handler with improved visual feedback
+  // Enhanced shoot handler with improved visual feedback and touch support
   const handleShoot = ({ 
     id, 
     point, 
@@ -657,12 +918,10 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
   }) => {
     if (isGameOver) return;
     
-    // Create a slightly offset starting position 
-    // This makes the laser appear to come from a "weapon" position
-    // rather than directly from the camera center
+    // Create a slightly offset starting position that works well on all device types
     const adjustedStart = new THREE.Vector3(
-      start.x + 1.5,  // Offset to the right side
-      start.y - 1,    // Offset down to simulate a gun position
+      start.x + (isTouchDevice ? 0.8 : 1.5),  // Less offset on touch devices
+      start.y - (isTouchDevice ? 0.5 : 1),    // Less offset on touch devices
       start.z         // Keep same Z position
     );
     
@@ -683,7 +942,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       onShootLetter(id);
       
       // Add haptic feedback for mobile devices if supported
-      if (navigator.vibrate) {
+      if (isTouchDevice && navigator.vibrate) {
         navigator.vibrate(25);
       }
     } else {
@@ -704,40 +963,117 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
     }
   };
   
+  // Camera position calculation based on device orientation and type
+  const getCameraPosition = (): [number, number, number] => {
+    if (isTouchDevice) {
+      // For touch devices, adjust camera position based on orientation
+      if (isPortrait) {
+        return [0, 0, 12]; // Move camera further back in portrait for better view
+      } else {
+        return [0, 0, 11]; // Slightly closer in landscape
+      }
+    } else {
+      // Desktop default
+      return [0, 0, 10];
+    }
+  };
+  
+  // OrbitControls settings calculation based on device type
+  const getOrbitControlsSettings = () => {
+    if (isTouchDevice) {
+      return {
+        enableZoom: true,
+        enableRotate: true,
+        minPolarAngle: Math.PI * 0.2, // Limit rotation more on mobile
+        maxPolarAngle: Math.PI * 0.8, // Limit rotation more on mobile
+        enablePan: true,
+        panSpeed: 0.5,
+        rotateSpeed: 0.5, // Slower rotation for more precision on touch
+        target: new THREE.Vector3(0, 0, -15),
+        maxDistance: 18,
+        minDistance: 6,
+        enabled: !isGameOver, // Disable controls when game is over
+      };
+    } else {
+      // Desktop default
+      return {
+        enableZoom: true,
+        enableRotate: true,
+        minPolarAngle: Math.PI * 0.1,
+        maxPolarAngle: Math.PI * 0.9,
+        enablePan: true,
+        panSpeed: 0.5,
+        target: new THREE.Vector3(0, 0, -15),
+        maxDistance: 20,
+        minDistance: 5,
+        enabled: !isGameOver, // Disable controls when game is over
+      };
+    }
+  };
+  
+  // Calculate pixel ratio limit based on device
+  const getPixelRatioLimit = () => {
+    // Limit pixel ratio more aggressively on touch devices
+    return isTouchDevice ? 
+      Math.min(window.devicePixelRatio, 1.5) : // Lower for mobile for better performance
+      Math.min(window.devicePixelRatio, 2);    // Higher limit for desktop
+  };
+  
+  // Orientation warning for mobile devices in portrait mode
+  const OrientationWarning = () => {
+    if (!isTouchDevice || !isPortrait) return null;
+    
+    return (
+      <div className="fixed bottom-28 left-0 right-0 mx-auto w-auto max-w-md px-4 py-2 bg-black/70 text-white text-center rounded-md z-50 backdrop-blur-sm">
+        <p>Rotate device to landscape for best experience</p>
+      </div>
+    );
+  };
+  
+  // Get orbit controls settings
+  const orbitSettings = getOrbitControlsSettings();
+  
   return (
     <div className="fixed inset-0 w-full h-full z-0">
       {!isSceneLoaded && <SceneLoadingFallback />}
       
       <Canvas 
         shadows 
-        camera={{ position: [0, 0, 10], fov: 60 }}
-        onCreated={() => {
+        camera={{ position: getCameraPosition(), fov: isTouchDevice ? 70 : 60 }}
+        onCreated={({ gl }) => {
           // Force WebGL context optimization
-          const renderer = new THREE.WebGLRenderer();
-          renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Cap pixel ratio
+          gl.setPixelRatio(getPixelRatioLimit());
+          
+          // Additional touch-specific optimizations
+          if (isTouchDevice) {
+            gl.shadowMap.enabled = false; // Disable shadows on mobile
+          }
         }}
         gl={{
-          antialias: false, // Disable antialiasing for performance
-          alpha: false,     // No transparency needed for background
-          powerPreference: 'high-performance',
+          antialias: !isTouchDevice, // Enable antialiasing only on non-touch devices
+          alpha: false,              // No transparency needed for background
+          powerPreference: isTouchDevice ? 'low-power' : 'high-performance',
+          stencil: false,            // Disable stencil buffer for performance
+          depth: true,               // Keep depth buffer for 3D
         }}
       >
         <Suspense fallback={null}>
           <AdaptiveSpaceEnvironment />
           
           {/* Add raycaster for better click detection */}
-          <Raycaster onShoot={handleShoot} />
+          <Raycaster onShoot={handleShoot} isGameOver={isGameOver} />
           
           {/* Render letters as shooting stars */}
           {memoizedLetters.map((letter) => (
             <StarLetter
               key={letter.id}
               letter={letter}
-              isMuted={isMuted} // Pass muted state
+              isMuted={isMuted}
+              isTouchDevice={isTouchDevice}
               onShoot={(id) => handleShoot({
                 id,
                 point: new THREE.Vector3(...letter.position),
-                start: new THREE.Vector3(0, 0, 10)
+                start: new THREE.Vector3(0, 0, getCameraPosition()[2])
               })}
             />
           ))}
@@ -750,7 +1086,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               end={beam.end}
               color={beam.color}
               duration={0.4}
-              thickness={0.03}
+              thickness={isTouchDevice ? 0.04 : 0.03} // Thicker beams on touch devices
             />
           ))}
           
@@ -762,17 +1098,19 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
             />
           ))}
           
-          {/* Orbit controls with limited movement */}
+          {/* Orbit controls with settings based on device type */}
           <OrbitControls 
-            enableZoom={true}
-            enableRotate={true}
-            minPolarAngle={Math.PI * 0.1}
-            maxPolarAngle={Math.PI * 0.9}
-            enablePan={true}
-            panSpeed={0.5}
-            target={[0, 0, -15]}
-            maxDistance={20}
-            minDistance={5}
+            enableZoom={orbitSettings.enableZoom}
+            enableRotate={orbitSettings.enableRotate}
+            minPolarAngle={orbitSettings.minPolarAngle}
+            maxPolarAngle={orbitSettings.maxPolarAngle}
+            enablePan={orbitSettings.enablePan}
+            panSpeed={orbitSettings.panSpeed}
+            rotateSpeed={orbitSettings.rotateSpeed}
+            target={orbitSettings.target}
+            maxDistance={orbitSettings.maxDistance}
+            minDistance={orbitSettings.minDistance}
+            enabled={orbitSettings.enabled}
           />
         </Suspense>
       </Canvas>
@@ -781,7 +1119,10 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       <MissedShotSound play={playMissSound} isMuted={isMuted} />
       
       {/* Only show the crosshair when the game is not over */}
-      {!isGameOver && <SpaceCrosshair />}
+      {!isGameOver && <AdaptiveCrosshair />}
+      
+      {/* Orientation advice for mobile users */}
+      <OrientationWarning />
     </div>
   );
 };
