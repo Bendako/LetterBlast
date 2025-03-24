@@ -195,11 +195,11 @@ export default function GamePage() {
         </div>
         
         {/* Target Word Display (Center Top) - Responsive size and position */}
-        <div className={`absolute transform -translate-x-1/2 bg-black/60 backdrop-blur-md px-3 py-2 md:px-6 md:py-3 rounded-full pointer-events-auto border border-indigo-500/20 shadow-[0_0_15px_rgba(66,135,245,0.2)] z-30 ${isMobile ? "top-16 left-1/2" : "top-20 left-1/2"}`}>
+        {/* <div className={`absolute transform -translate-x-1/2 bg-black/60 backdrop-blur-md px-3 py-2 md:px-6 md:py-3 rounded-full pointer-events-auto border border-indigo-500/20 shadow-[0_0_15px_rgba(66,135,245,0.2)] z-30 ${isMobile ? "top-16 left-1/2" : "top-20 left-1/2"}`}>
           <div className="text-center">
             <h2 className="text-base md:text-xl font-bold text-white drop-shadow-[0_0_5px_rgba(66,135,245,0.8)]">Target: {gameState.targetWord}</h2>
           </div>
-        </div>
+        </div> */}
         
         {/* Current Progress (Bottom Center) - Adaptive sizing & positioning */}
         <div className={`absolute left-0 right-0 mx-auto w-auto max-w-md bg-black/60 backdrop-blur-md p-2 md:p-4 rounded-lg pointer-events-auto border border-indigo-500/20 shadow-[0_0_15px_rgba(66,135,245,0.2)] z-30 ${isMobile && isPortrait ? "bottom-20" : "bottom-8"}`}>
