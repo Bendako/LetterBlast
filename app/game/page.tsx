@@ -5,7 +5,7 @@ import GameCanvas from '@/app/game/game-canvas';
 import Link from 'next/link';
 import { useGameState } from '@/hooks/use-game-state';
 import { GameDifficulty } from '@/lib/game-engine';
-import { Volume2, VolumeX, Home, Pause, Play } from 'lucide-react'; // Added more icons
+import { Volume2, VolumeX, Home, Pause, Play } from 'lucide-react';
 
 export default function GamePage() {
   const { 
@@ -26,6 +26,7 @@ export default function GamePage() {
   // Device detection
   const [isMobile, setIsMobile] = useState(false);
   const [isPortrait, setIsPortrait] = useState(false);
+  const [isSmallScreen, setIsSmallScreen] = useState(false);
   
   // Handle restart button
   const handleRestart = () => {
@@ -52,9 +53,11 @@ export default function GamePage() {
                      'ontouchstart' in window || 
                      navigator.maxTouchPoints > 0;
       const portrait = window.innerHeight > window.innerWidth;
+      const smallScreen = window.innerHeight < 700;
       
       setIsMobile(mobile);
       setIsPortrait(portrait);
+      setIsSmallScreen(smallScreen);
     };
     
     checkDevice();
@@ -103,6 +106,24 @@ export default function GamePage() {
     for (let i = highestId; i >= 0; i--) {
       window.clearTimeout(i);
     }
+  };
+  
+  // Get bottom position for current word progress - adjusted for better spacing
+  const getProgressBottomPosition = () => {
+    if (isMobile && isPortrait) {
+      return isSmallScreen ? "bottom-32" : "bottom-28"; // Increased from bottom-20
+    }
+    return "bottom-16"; // Increased from bottom-8 for better spacing
+  };
+  
+  // Get position for difficulty buttons - adjusted to avoid overlap
+  const getDifficultyPosition = () => {
+    if (isMobile && isPortrait) {
+      // Center align at bottom with more space
+      return "bottom-6 left-0 right-0 mx-auto w-fit"; // Increased from bottom-4
+    }
+    // For landscape and desktop, keep on bottom right with more space
+    return "bottom-4 right-4 md:right-8"; // Adjusted spacing
   };
   
   return (
@@ -194,15 +215,8 @@ export default function GamePage() {
           </div>
         </div>
         
-        {/* Target Word Display (Center Top) - Responsive size and position */}
-        {/* <div className={`absolute transform -translate-x-1/2 bg-black/60 backdrop-blur-md px-3 py-2 md:px-6 md:py-3 rounded-full pointer-events-auto border border-indigo-500/20 shadow-[0_0_15px_rgba(66,135,245,0.2)] z-30 ${isMobile ? "top-16 left-1/2" : "top-20 left-1/2"}`}>
-          <div className="text-center">
-            <h2 className="text-base md:text-xl font-bold text-white drop-shadow-[0_0_5px_rgba(66,135,245,0.8)]">Target: {gameState.targetWord}</h2>
-          </div>
-        </div> */}
-        
-        {/* Current Progress (Bottom Center) - Adaptive sizing & positioning */}
-        <div className={`absolute left-0 right-0 mx-auto w-auto max-w-md bg-black/60 backdrop-blur-md p-2 md:p-4 rounded-lg pointer-events-auto border border-indigo-500/20 shadow-[0_0_15px_rgba(66,135,245,0.2)] z-30 ${isMobile && isPortrait ? "bottom-20" : "bottom-8"}`}>
+        {/* Current Progress (Bottom Center) - Adaptive positioning with more space */}
+        <div className={`absolute left-0 right-0 mx-auto w-auto max-w-md bg-black/60 backdrop-blur-md p-2 md:p-4 rounded-lg pointer-events-auto border border-indigo-500/20 shadow-[0_0_15px_rgba(66,135,245,0.2)] z-30 ${getProgressBottomPosition()}`}>
           <div className="flex gap-1 md:gap-2 justify-center items-center">
             {gameState.targetWord.split('').map((letter, index) => (
               <span 
@@ -219,8 +233,8 @@ export default function GamePage() {
           </div>
         </div>
         
-        {/* Difficulty Controls - Repositioned for mobile */}
-        <div className={`absolute bg-black/60 backdrop-blur-md p-2 md:p-3 rounded-lg pointer-events-auto border border-indigo-500/20 shadow-[0_0_15px_rgba(66,135,245,0.2)] z-30 ${isMobile && isPortrait ? "bottom-4 left-0 right-0 mx-auto w-fit" : "bottom-8 right-4 md:right-8"}`}>
+        {/* Difficulty Controls - Repositioned with better spacing */}
+        <div className={`absolute bg-black/60 backdrop-blur-md p-2 md:p-3 rounded-lg pointer-events-auto border border-indigo-500/20 shadow-[0_0_15px_rgba(66,135,245,0.2)] z-30 ${getDifficultyPosition()}`}>
           <div className="flex space-x-1 md:space-x-2">
             <button 
               onClick={() => handleDifficultyChange('easy')}
