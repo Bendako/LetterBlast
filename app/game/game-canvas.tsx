@@ -23,33 +23,39 @@ import {
   getPixelRatioLimit
 } from '@/lib/types/game-types';
 
-// === COMPONENT DEFINITIONS ===
-
 /**
  * Visual effect for missed shots
  */
 const MissEffect: React.FC<{ position: [number, number, number] }> = ({ position }) => {
   interface Particle {
+    id: string;
     position: THREE.Vector3;
     velocity: THREE.Vector3;
+    color: THREE.Color;
     life: number;
     maxLife: number;
+    size: number;
   }
 
   const [particles, setParticles] = useState<Particle[]>(() => {
     const result: Particle[] = [];
-    for (let i = 0; i < 8; i++) {
-      const angle = (i / 8) * Math.PI * 2;
-      const speed = 0.03 + Math.random() * 0.02;
+    const colors = [new THREE.Color('#ff4d4d'), new THREE.Color('#ff794d'), new THREE.Color('#ffa64d')];
+    for (let i = 0; i < 12; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 0.02 + Math.random() * 0.04;
+      const life = 0.4 + Math.random() * 0.4;
       result.push({
+        id: `miss-particle-${i}-${Date.now()}`,
         position: new THREE.Vector3(0, 0, 0),
         velocity: new THREE.Vector3(
-          Math.cos(angle) * speed,
-          Math.sin(angle) * speed,
-          0
+          Math.cos(angle) * speed * (Math.random() + 0.5),
+          Math.sin(angle) * speed * (Math.random() + 0.5),
+          (Math.random() - 0.5) * speed * 0.5
         ),
-        life: 1.0,
-        maxLife: 1.0,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        life: life,
+        maxLife: life,
+        size: 0.05 + Math.random() * 0.08,
       });
     }
     return result;
@@ -60,7 +66,8 @@ const MissEffect: React.FC<{ position: [number, number, number] }> = ({ position
       prev
         .map(particle => {
           particle.position.add(particle.velocity);
-          particle.life -= delta * 2; // Faster fadeout than explosion
+          particle.velocity.multiplyScalar(0.98);
+          particle.life -= delta * 1.5;
           return particle;
         })
         .filter(particle => particle.life > 0)
@@ -71,13 +78,20 @@ const MissEffect: React.FC<{ position: [number, number, number] }> = ({ position
   
   return (
     <group position={position}>
-      {particles.map((particle, index) => (
-        <mesh key={index} position={particle.position}>
-          <sphereGeometry args={[0.1 * (particle.life / particle.maxLife), 8, 8]} />
-          <meshBasicMaterial 
-            color="red" 
-            transparent={true} 
-            opacity={particle.life / particle.maxLife}
+      <pointLight intensity={1.5} distance={3} color="#ff6666" decay={2} />
+      {particles.map((particle) => (
+        <mesh key={particle.id} position={particle.position}>
+          <icosahedronGeometry args={[particle.size * (particle.life / particle.maxLife), 0]} />
+          <meshStandardMaterial
+            color={particle.color}
+            emissive={particle.color}
+            emissiveIntensity={1.5}
+            metalness={0.2}
+            roughness={0.8}
+            transparent={true}
+            opacity={Math.max(0, particle.life / particle.maxLife)}
+            depthWrite={false}
+            blending={THREE.AdditiveBlending}
           />
         </mesh>
       ))}
@@ -114,7 +128,7 @@ const StarLetter: React.FC<{
   }, []);
   
   // Animate the letter to follow its velocity direction
-  useFrame(() => {
+  useFrame(({ clock }) => {
     if (isUnmountedRef.current) return;
     
     if (groupRef.current && !active && !exploded) {
@@ -122,6 +136,10 @@ const StarLetter: React.FC<{
       const [vx, vy] = letter.velocity;
       const angle = Math.atan2(vy, vx);
       groupRef.current.rotation.z = angle;
+      
+      // Add subtle bobbing motion
+      const bobbleFactor = Math.sin(clock.getElapsedTime() * 3 + id.charCodeAt(0)) * 0.05;
+      groupRef.current.position.y = position[1] + bobbleFactor;
       
       // Slightly vary the trail scale for a twinkling effect
       if (trailRef.current && Math.random() > 0.8) {
@@ -175,12 +193,22 @@ const StarLetter: React.FC<{
       <>
         <StarExplosion position={position} color={color} />
         {showFlash && (
-          <pointLight 
-            position={position} 
-            intensity={5} 
-            distance={10} 
-            color="white"
-          />
+          <>
+            <pointLight
+              position={position}
+              intensity={10}
+              distance={15}
+              color="white"
+              decay={2}
+            />
+            <pointLight
+              position={position}
+              intensity={5}
+              distance={12}
+              color={color}
+              decay={2}
+            />
+          </>
         )}
         <ExplosionSound play={playSound} isMuted={isMuted} />
       </>
@@ -198,6 +226,7 @@ const StarLetter: React.FC<{
   const g = parseInt(trailColor.substring(2, 4), 16);
   const b = parseInt(trailColor.substring(4, 6), 16);
   const darkerTrailColor = `#${Math.floor(r * 0.4).toString(16).padStart(2, '0')}${Math.floor(g * 0.4).toString(16).padStart(2, '0')}${Math.floor(b * 0.4).toString(16).padStart(2, '0')}`;
+  const midTrailColor = `#${Math.floor(r * 0.7).toString(16).padStart(2, '0')}${Math.floor(g * 0.7).toString(16).padStart(2, '0')}${Math.floor(b * 0.7).toString(16).padStart(2, '0')}`;
 
   // Add touch-friendly scaling for mobile
   const letterScale = isTouchDevice ? 1.3 : 1.0; // Larger on touch devices
@@ -216,22 +245,29 @@ const StarLetter: React.FC<{
         position={[-0.8, 0, -0.1]} 
       >
         <coneGeometry args={[0.3, 1.5, 8]} />
-        <meshStandardMaterial 
-          color={darkerTrailColor} 
-          transparent={true} 
-          opacity={0.7}
+        <meshPhongMaterial
+          color={midTrailColor}
+          transparent={true}
+          opacity={0.6}
           emissive={darkerTrailColor}
-          emissiveIntensity={0.5}
+          emissiveIntensity={0.4}
+          shininess={60}
+          specular={starColor}
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
         />
       </mesh>
       
       {/* Star Head with the Letter */}
       <mesh>
-        <sphereGeometry args={[0.5, 16, 16]} />
-        <meshStandardMaterial 
-          color={starColor} 
+        <sphereGeometry args={[0.5, 32, 32]} />
+        <meshPhongMaterial
+          color={starColor}
           emissive={starColor}
-          emissiveIntensity={0.8}
+          emissiveIntensity={0.6}
+          shininess={80}
+          specular="#ffffff"
+          map={null}
         />
       </mesh>
       
@@ -244,6 +280,8 @@ const StarLetter: React.FC<{
           anchorX="center"
           anchorY="middle"
           fontWeight="bold"
+          outlineWidth={0.03}
+          outlineColor="#000000"
         >
           {character}
         </Text>
@@ -251,9 +289,10 @@ const StarLetter: React.FC<{
       
       {/* Small glow effect */}
       <pointLight 
-        distance={3} 
-        intensity={0.6} 
+        distance={4} 
+        intensity={1.0} 
         color={starColor} 
+        decay={2}
       />
     </group>
   );
@@ -466,8 +505,8 @@ const Raycaster: React.FC<{
 const LowDetailSpaceEnvironment: React.FC = () => {
   return (
     <>
-      {/* Dark space background */}
-      <color attach="background" args={["#000010"]} />
+      {/* Slightly darker background color */}
+      <color attach="background" args={["#030308"]} />
       
       {/* Reduced lighting for better performance */}
       <ambientLight intensity={0.3} />
@@ -490,16 +529,66 @@ const LowDetailSpaceEnvironment: React.FC = () => {
  * Full detail space environment
  */
 const HighDetailSpaceEnvironment: React.FC = () => {
+  const nebulaRef = useRef<THREE.Points>(null); // Ref for nebula animation
+
+  // Setup nebula geometry and material using useMemo and THREE objects
+  const [nebulaGeometry, nebulaMaterial] = useMemo(() => {
+    const geometry = new THREE.BufferGeometry();
+
+    // Positions
+    const positions = new Float32Array(500 * 3);
+    for (let i = 0; i < 500; i++) {
+      positions[i * 3 + 0] = (Math.random() - 0.5) * 80; 
+      positions[i * 3 + 1] = (Math.random() - 0.5) * 50;
+      positions[i * 3 + 2] = (Math.random() - 0.5) * 40;
+    }
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+    // Colors
+    const colors = new Float32Array(500 * 3);
+    const baseColor1 = new THREE.Color("#4B0082");
+    const baseColor2 = new THREE.Color("#8A2BE2");
+    for (let i = 0; i < 500; i++) {
+      const mixedColor = Math.random() > 0.5 ? baseColor1.clone() : baseColor2.clone();
+      mixedColor.lerp(new THREE.Color("#ffffff"), Math.random() * 0.1); 
+      colors[i * 3 + 0] = mixedColor.r;
+      colors[i * 3 + 1] = mixedColor.g;
+      colors[i * 3 + 2] = mixedColor.b;
+    }
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+    // Material
+    const material = new THREE.PointsMaterial({
+      size: 1.5,
+      sizeAttenuation: true,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.25,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+
+    return [geometry, material];
+  }, []);
+
+  // Nebula animation
+  useFrame((_, delta) => {
+    if (nebulaRef.current) {
+      nebulaRef.current.rotation.y += delta * 0.02; // Slow rotation
+    }
+  });
+  
   return (
     <>
-      {/* Dark space background */}
-      <color attach="background" args={["#000010"]} />
+      {/* Slightly darker background color */}
+      <color attach="background" args={["#050515"]} /> 
       
       {/* Ambient and directional lights for space setting */}
-      <ambientLight intensity={0.2} />
+      <ambientLight intensity={0.15} /> {/* Slightly lower intensity */}
+      <hemisphereLight intensity={0.1} groundColor="#080820" color="#406080" /> {/* Add hemisphere light */}
       <directionalLight position={[10, 10, 5]} intensity={0.5} />
-      <pointLight position={[-5, 2, -10]} intensity={1} color="#4169e1" />
-      <pointLight position={[5, -2, -15]} intensity={0.8} color="#800080" />
+      <pointLight position={[-15, 8, -15]} intensity={0.8} color="#5070ff" decay={2} distance={50}/> {/* Adjusted position/color/props */}
+      <pointLight position={[15, -8, -25]} intensity={0.6} color="#aa44ff" decay={2} distance={60}/> {/* Adjusted position/color/props */}
       
       {/* Built-in drei Stars component for background */}
       <Stars 
@@ -511,38 +600,41 @@ const HighDetailSpaceEnvironment: React.FC = () => {
         fade
       />
       
+      {/* Second layer of stars */}
+      <Stars 
+        radius={120} // Slightly further out
+        depth={60}
+        count={3000} // Fewer, larger stars
+        factor={6} // Larger size
+        saturation={0}
+        fade
+        speed={0.5} // Slower movement
+      />
+      
       {/* Distant planets */}
       <mesh position={[-20, 10, -50]} castShadow>
         <sphereGeometry args={[5, 32, 32]} />
-        <meshStandardMaterial color="#4169e1" />
+        {/* Enhanced material */}
+        <meshStandardMaterial color="#4169e1" roughness={0.6} metalness={0.1} /> 
         <pointLight position={[0, 0, 0]} intensity={0.5} color="#4169e1" distance={10} />
       </mesh>
       
       <mesh position={[25, -15, -70]} castShadow>
         <sphereGeometry args={[8, 32, 32]} />
-        <meshStandardMaterial color="#8A2BE2" />
+        {/* Enhanced material */}
+        <meshStandardMaterial color="#8A2BE2" roughness={0.8} metalness={0.2} />
+        {/* Add simple rings */}
+        <mesh rotation={[Math.PI / 2.5, 0, 0]}> {/* Tilt the rings */}
+          <torusGeometry args={[11, 0.5, 2, 48]} /> {/* Outer radius, tube radius, segments */}
+          <meshStandardMaterial color="#b0a0d0" roughness={0.9} metalness={0.1} side={THREE.DoubleSide} />
+        </mesh>
       </mesh>
       
-      {/* Nebula effect with particles - reduced count */}
-      <group position={[0, 0, -30]}>
-        {Array.from({ length: 30 }).map((_, i) => {
-          const size = Math.random() * 2 + 0.5;
-          const x = (Math.random() - 0.5) * 60;
-          const y = (Math.random() - 0.5) * 40;
-          const z = (Math.random() - 0.5) * 30 - 10;
-          
-          return (
-            <mesh key={`nebula-${i}`} position={[x, y, z]}>
-              <sphereGeometry args={[size, 8, 8]} />
-              <meshBasicMaterial 
-                color={i % 2 === 0 ? "#4B0082" : "#8A2BE2"} 
-                transparent={true}
-                opacity={0.05 + Math.random() * 0.1}
-              />
-            </mesh>
-          );
-        })}
-      </group>
+      {/* Nebula using primitive with pre-built geometry/material */}
+      <points ref={nebulaRef} position={[0, 0, -40]}>
+        <primitive object={nebulaGeometry} attach="geometry" />
+        <primitive object={nebulaMaterial} attach="material" />
+      </points>
     </>
   );
 };
@@ -913,7 +1005,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
       id: `beam-${Date.now()}`,
       start: adjustedStart,
       end: new THREE.Vector3(point.x, point.y, point.z),
-      color: id ? '#4fc3f7' : '#ff5252', // Blue for potential hit, red for definite miss
+      color: id ? '#00ffff' : '#ff4444',
       timestamp: Date.now()
     };
     
@@ -1018,7 +1110,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({
               end={beam.end}
               color={beam.color}
               duration={0.4}
-              thickness={isTouchDevice ? 0.04 : 0.03} // Thicker beams on touch devices
+              thickness={isTouchDevice ? 0.05 : 0.04}
             />
           ))}
           
