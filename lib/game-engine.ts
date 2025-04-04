@@ -300,9 +300,27 @@ export const handleLetterShot = (state: GameState, letterId: string): GameState 
       l.id === letterId ? { ...l, missed: true } : l
     );
     
+    // Reduce lives on incorrect hit
+    const newLives = state.lives - 1;
+    
+    // Check if game over due to no lives left
+    if (newLives <= 0) {
+      return {
+        ...state,
+        lives: 0,
+        isGameOver: true,
+        comboCount: 0,
+        letters: updatedLetters,
+        lastShotResult: 'miss',
+        lastShotLetterId: letterId,
+        lastShotTimestamp: Date.now(),
+      };
+    }
+    
     // Reset combo on miss
     return {
       ...state,
+      lives: newLives,
       comboCount: 0,
       letters: updatedLetters,
       lastShotResult: 'miss',

@@ -201,8 +201,17 @@ export default function GamePage() {
             <div className="bg-black/50 backdrop-blur-sm p-2 md:p-3 rounded-lg text-white border border-indigo-500/30 shadow-[0_0_15px_rgba(66,135,245,0.2)]">
               <div className="text-xs md:text-sm opacity-80">Lives</div>
               <div className="text-lg md:text-2xl font-bold flex">
-                {Array.from({ length: gameState.lives }).map((_, i) => (
-                  <span key={i} className="text-purple-400 mr-0.5 md:mr-1 drop-shadow-[0_0_5px_rgba(66,135,245,0.8)]">★</span>
+                {Array.from({ length: gameState.difficulty === 'easy' ? 5 : gameState.difficulty === 'medium' ? 4 : 3 }).map((_, i) => (
+                  <span 
+                    key={i} 
+                    className={`mr-0.5 md:mr-1 ${
+                      i < gameState.lives 
+                        ? 'text-purple-400 drop-shadow-[0_0_5px_rgba(66,135,245,0.8)]' 
+                        : 'text-gray-600'
+                    }`}
+                  >
+                    ★
+                  </span>
                 ))}
               </div>
             </div>
