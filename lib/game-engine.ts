@@ -243,6 +243,12 @@ export const handleLetterShot = (state: GameState, letterId: string): GameState 
   const letter = state.letters.find(l => l.id === letterId);
   if (!letter) return state;
   
+  // Prevent processing already hit letters
+  if (letter.active || letter.missed) {
+    console.log('Skipping already processed letter:', letterId);
+    return state;
+  }
+  
   const targetWord = state.targetWord;
   const currentWord = state.currentWord;
   
