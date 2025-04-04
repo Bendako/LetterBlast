@@ -269,17 +269,22 @@ export const handleLetterShot = (state: GameState, letterId: string): GameState 
     // Increment combo
     const newComboCount = state.comboCount + 1;
     
+    // Calculate combo bonus (starts after the first hit)
+    const comboBonus = newComboCount > 1 ? (newComboCount - 1) * 5 : 0;
+    const baseScore = 10;
+    const newScore = state.score + baseScore + comboBonus;
+    
     // Check if word is complete
     if (newCurrentWord === targetWord) {
-      // Calculate score based on difficulty and remaining time
+      // Calculate difficulty multiplier for word completion score
       const difficultyMultiplier = 
         state.difficulty === 'easy' ? 1 :
         state.difficulty === 'medium' ? 2 :
         3;
       
       const timeBonus = Math.floor(state.timeRemaining * 0.1);
-      const comboBonus = state.comboCount * 5; // Add combo bonus
-      const wordScore = 10 * targetWord.length * difficultyMultiplier + timeBonus + comboBonus;
+      // Use the combo bonus calculated above for the final word score
+      const wordScore = (10 * targetWord.length) * difficultyMultiplier + timeBonus + comboBonus;
       
       // Get a new target word
       const newState = initializeGame(state.difficulty);
@@ -290,7 +295,7 @@ export const handleLetterShot = (state: GameState, letterId: string): GameState 
       
       return {
         ...newState,
-        score: state.score + wordScore,
+        score: state.score + wordScore, // Add word completion score to existing score
         lastShotResult: 'hit',
         lastShotLetterId: letterId,
         lastShotTimestamp: Date.now(),
@@ -304,6 +309,7 @@ export const handleLetterShot = (state: GameState, letterId: string): GameState 
       lastShotResult: 'hit',
       lastShotLetterId: letterId,
       comboCount: newComboCount,
+      score: newScore, // Update score with base + combo bonus
       lastShotTimestamp: Date.now(),
     };
   } else {

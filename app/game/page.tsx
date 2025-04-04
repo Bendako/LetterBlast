@@ -197,6 +197,14 @@ export default function GamePage() {
               <div className="text-lg md:text-2xl font-bold drop-shadow-[0_0_5px_rgba(66,135,245,0.8)]">{gameState.score}</div>
             </div>
             
+            {/* Combo Display - Show only when combo > 1 */}
+            {gameState.comboCount > 1 && (
+              <div className="bg-black/50 backdrop-blur-sm p-2 md:p-3 rounded-lg text-white border border-orange-500/30 shadow-[0_0_15px_rgba(249,115,22,0.2)] animate-pulse">
+                <div className="text-xs md:text-sm opacity-80">Combo</div>
+                <div className="text-lg md:text-2xl font-bold drop-shadow-[0_0_5px_rgba(249,115,22,0.8)] text-orange-400">x{gameState.comboCount}</div>
+              </div>
+            )}
+            
             {/* Lives Display */}
             <div className="bg-black/50 backdrop-blur-sm p-2 md:p-3 rounded-lg text-white border border-indigo-500/30 shadow-[0_0_15px_rgba(66,135,245,0.2)]">
               <div className="text-xs md:text-sm opacity-80">Lives</div>
