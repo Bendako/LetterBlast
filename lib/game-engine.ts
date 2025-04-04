@@ -246,6 +246,9 @@ export const handleLetterShot = (state: GameState, letterId: string): GameState 
   const targetWord = state.targetWord;
   const currentWord = state.currentWord;
   
+  // Debug log to help track lives changes
+  console.log('Before shot - Lives:', state.lives);
+  
   // Check if this is the next letter in the target word
   const nextIndex = currentWord.length;
   if (nextIndex < targetWord.length && letter.character === targetWord[nextIndex]) {
@@ -275,10 +278,13 @@ export const handleLetterShot = (state: GameState, letterId: string): GameState 
       // Get a new target word
       const newState = initializeGame(state.difficulty);
       
+      // Ensure we keep the current lives count when moving to a new word
+      newState.lives = state.lives;
+      console.log('Word complete - Lives maintained:', newState.lives);
+      
       return {
         ...newState,
         score: state.score + wordScore,
-        lives: state.lives, // Maintain current lives
         lastShotResult: 'hit',
         lastShotLetterId: letterId,
         lastShotTimestamp: Date.now(),
@@ -300,8 +306,9 @@ export const handleLetterShot = (state: GameState, letterId: string): GameState 
       l.id === letterId ? { ...l, missed: true } : l
     );
     
-    // Reduce lives on incorrect hit
+    // Reduce lives on incorrect hit - ONLY by 1
     const newLives = state.lives - 1;
+    console.log('Incorrect hit - Lives reduced to:', newLives);
     
     // Check if game over due to no lives left
     if (newLives <= 0) {
